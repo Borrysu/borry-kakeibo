@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="記帳">
+<meta name="theme-color" content="#f99b1d"><meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="favicon-32.png">
+<title>記帳</title>
+<script>
+/* error overlay + load watchdog: runs first, so a failure is visible instead of a black screen */
+(function(){
+  var box;
+  function show(m,slow){
+    try{
+      if(!box){box=document.createElement('div');box.id='kkdie';
+        box.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:99999;background:#4a1a1d;color:#ffd7d5;font:14px/1.5 -apple-system,sans-serif;padding:12px 14px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.4);word-break:break-all';
+        (document.body||document.documentElement).appendChild(box);}
+      box.innerHTML='';if(slow)box.setAttribute('data-slow','1');else box.removeAttribute('data-slow');
+      var t=document.createElement('div');t.textContent=(slow?'':'頁面出錯：')+m;box.appendChild(t);
+      var b=document.createElement('button');b.textContent='重新整理';b.style.cssText='margin:8px 8px 0 0;min-height:44px;padding:0 16px;border:0;border-radius:10px;background:#f99b1d;color:#fff;font-size:16px;font-weight:700';
+      b.onclick=function(){location.reload();};box.appendChild(b);
+      var c=document.createElement('button');c.textContent='清除快取再試';c.style.cssText='margin-top:8px;min-height:44px;padding:0 16px;border:0;border-radius:10px;background:#555;color:#fff;font-size:16px';
+      c.onclick=function(){var p=[];try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}));if(window.caches)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}));}catch(e){}Promise.all(p).then(function(){location.reload();},function(){location.reload();});};
+      box.appendChild(c);
+    }catch(e){}
+  }
+  window.__kkShow=show;
+  window.addEventListener('error',function(e){
+    var t=e.target;
+    if(t&&t!==window&&(t.tagName==='SCRIPT'||t.tagName==='LINK')&&(t.src||t.href)){show('載入失敗：'+String(t.src||t.href).split('?')[0].split('#')[0].split('/').pop());return;}
+    show((e.message||'未知錯誤')+(e.lineno?'（第 '+e.lineno+' 行）':''));
+  },true);
+  window.addEventListener('unhandledrejection',function(e){var r=e.reason;show(String((r&&r.message)||r||'未知錯誤'));});
+  setTimeout(function(){if(!window.__kkReady)show('載入比平常慢，網路可能不穩。',true);},8000);
+})();
+</script>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--grp:#e9e9ef;--line:#e5e5ea;--tx:#1c1c1e;--mut:#8e8e93;--press:#ececf1;--org:#f99b1d;--orgd:#e48a0c;--exp:#e5484d;--inc:#16a765;--warn:#f99b1d;--key:#fff;--keyd:#e3e3e9;--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--grp:#121214;--line:#2c2c2e;--tx:#f2f2f7;--mut:#8e8e93;--press:#2a2a2d;--org:#d98410;--orgd:#c4740a;--exp:#ff6369;--inc:#32d583;--key:#2c2c2e;--keyd:#3a3a3d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg);-webkit-text-size-adjust:100%}
+body{color:var(--tx);font:16px/1.4 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;position:fixed;inset:0;width:100%}
+button,.chip,.tb,.tx,.cat,.keypad{-webkit-user-select:none;user-select:none}
+button,input{font:inherit;color:inherit;border:0;background:none;touch-action:manipulation;margin:0}
+button{cursor:pointer;padding:0}
+input{-webkit-appearance:none;appearance:none;border-radius:0}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}.mut{color:var(--mut)}
+#shell{position:fixed;inset:0;display:flex;flex-direction:column;max-width:520px;margin:0 auto;background:var(--bg)}
+/* header */
+#top{flex:none;background:var(--org);color:#fff;padding-top:var(--sat);z-index:30}
+.bar{height:48px;display:grid;grid-template-columns:96px 1fr 96px;align-items:center;padding:0 4px}
+.bar h1{margin:0;font-size:18px;font-weight:700;text-align:center;white-space:nowrap}
+.bar h1 i{display:inline-block;width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.45);margin-left:6px;vertical-align:middle;transition:background .3s}
+.bar h1 i.on{background:#b8ffcf;box-shadow:0 0 6px #b8ffcf}
+.hbtn{height:44px;min-width:44px;display:flex;align-items:center;font-size:15px;font-weight:600;color:#fff}
+.hbtn:active{opacity:.55}
+#refresh{justify-content:flex-start;padding-left:10px;font-size:22px}
+#showvoid{justify-content:flex-end;padding-right:6px}
+#showvoid span{height:30px;line-height:28px;padding:0 11px;border:1.5px solid rgba(255,255,255,.85);border-radius:15px;font-size:13px;white-space:nowrap}
+#showvoid[aria-pressed=true] span{background:#fff;color:var(--orgd)}
+.pnav{height:46px;background:var(--card);display:grid;grid-template-columns:56px 1fr 56px;align-items:center;border-bottom:1px solid var(--line);color:var(--tx)}
+.pnav button{height:46px;font-size:26px;color:var(--org);font-weight:300}
+.pnav button:active{opacity:.4}.pnav button:disabled{opacity:.25}
+.pnav .pl{text-align:center;font-size:17px;font-weight:700;white-space:nowrap}
+.pnav .pl em{font-style:normal;font-size:12px;font-weight:600;color:#fff;background:var(--org);border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:2px}
+.pnav .pl em.old{background:var(--mut)}
+/* scroll area */
+#scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:24px}
+.gate{text-align:center;padding:90px 20px;color:var(--mut)}
+.gate .em{font-size:44px;margin-bottom:8px}
+.paste{display:flex;gap:8px;max-width:400px;margin:18px auto 0}
+.paste input{flex:1;min-width:0;min-height:48px;border-radius:12px;background:var(--card);padding:0 12px;font-size:16px;color:var(--tx);border:1.5px solid var(--line)}
+.paste button{flex:none;min-height:48px;padding:0 20px;border-radius:12px;background:var(--org);color:#fff;font-weight:700}
+.paste button:active{background:var(--orgd)}
+.sk{height:200px;background:linear-gradient(90deg,var(--card),var(--press),var(--card));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+/* summary card */
+.sumcard{background:var(--card);padding:14px 16px 14px;border-bottom:1px solid var(--line)}
+.sumcard .k{font-size:13px;color:var(--mut);text-align:center}
+.sumcard .big{font-size:38px;font-weight:700;text-align:center;color:var(--exp);line-height:1.15;letter-spacing:-.5px}
+.sumcard .big small{font-size:17px;font-weight:600;margin-right:4px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);text-align:center}
+.cols3>div+div{border-left:1px solid var(--line)}
+.cols3 b{display:block;font-size:17px;white-space:nowrap}
+.cols3>div>span{font-size:12.5px;color:var(--mut)}
+.cols3 b span{color:inherit;font-size:inherit}
+.prog{margin-top:12px}
+.prog .bar2{height:8px;border-radius:4px;background:var(--grp);overflow:hidden}
+.prog .bar2 i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#f9b23d,var(--org));transition:width .5s ease}
+.prog .meta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut);margin-top:6px}
+/* grouped lists */
+.gh{display:flex;justify-content:space-between;align-items:center;min-height:32px;padding:5px 16px;background:var(--grp);color:var(--mut);font-size:13px;font-weight:600}
+.gh b{color:var(--tx);font-weight:600;font-size:14px;margin-right:8px}
+.gh .num{white-space:nowrap}
+.rows{background:var(--card)}
+.tx{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;border-bottom:1px solid var(--line);width:100%;text-align:left;background:var(--card)}
+.tx:last-child{border-bottom:0}
+.tx:active,.cardrow:active{background:var(--press)}
+.ico{flex:none;width:40px;height:40px;border-radius:20px;background:var(--bg);display:grid;place-items:center;font-size:22px}
+.mid{flex:1;min-width:0}
+.ttl{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:13px;color:var(--mut);min-width:0}
+.sub .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tag{flex:none;font-size:12px;line-height:1;padding:3px 7px;border-radius:7px;font-weight:600;color:#fff}
+.right{flex:none;text-align:right;max-width:46%}
+.amt{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.amt.expense{color:var(--exp)}.amt.income{color:var(--inc)}.amt.transfer,.amt.reimbursement{color:var(--mut)}
+.acct{font-size:12px;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx.void{opacity:.5}.tx.void .amt,.tx.void .ttl{text-decoration:line-through}
+.empty{background:var(--card);padding:30px 20px;text-align:center;color:var(--mut);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:200px}
+.empty .em{font-size:40px}.empty b{color:var(--tx);font-size:16px}.empty span{font-size:13.5px}
+/* stats */
+.utabs{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-bottom:1px solid var(--line)}
+.utabs button{height:44px;font-size:15px;color:var(--mut);position:relative;font-weight:600}
+.utabs button.on{color:var(--org)}.utabs button.on::after{content:"";position:absolute;left:18%;right:18%;bottom:0;height:3px;border-radius:2px;background:var(--org)}
+.panel{background:var(--card);padding:14px 16px}
+.chartbox{position:relative;height:230px}
+.totline{display:flex;gap:18px;padding:12px 16px;background:var(--card);border-top:1px solid var(--line);font-size:15px;font-weight:600;color:var(--mut)}
+.totline span b{color:var(--tx)}
+.tbl{width:100%;border-collapse:collapse;background:var(--card);font-size:15px}
+.tbl th{height:34px;background:var(--grp);color:var(--mut);font-size:12.5px;font-weight:600;padding:0 16px;text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{height:46px;padding:0 16px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl td:first-child{white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:5px;margin-right:8px;vertical-align:0}
+/* cards / rows */
+.cardrow{display:flex;align-items:center;gap:12px;background:var(--card);padding:10px 16px;min-height:64px;width:100%;text-align:left;border-bottom:1px solid var(--line)}
+.due{flex:none;width:44px;height:44px;border-radius:12px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.due b{font-size:18px}.due i{font-style:normal;font-size:12px;color:var(--mut)}
+.pill{flex:none;font-size:13px;font-weight:700;padding:7px 12px;border-radius:15px;white-space:nowrap}
+.pill.ok{background:rgba(22,167,101,.14);color:var(--inc)}
+.pill.todo{background:var(--org);color:#fff}
+.t1{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t2{font-size:13px;color:var(--mut);margin-top:2px}
+.grp{border-bottom:1px solid var(--line)}.grp .cardrow{border-bottom:0}
+.note{font-size:13px;color:var(--mut);padding:0 16px 12px;background:var(--card);line-height:1.5;word-break:break-word}
+.foot{padding:10px 16px;font-size:13px;color:var(--mut)}
+.assetsum{display:grid;grid-template-columns:1fr 1fr;background:var(--card);padding:14px 0;text-align:center;border-bottom:1px solid var(--line)}
+.assetsum>div+div{border-left:1px solid var(--line)}
+.assetsum b{display:block;font-size:20px}.assetsum span{font-size:12.5px;color:var(--mut)}
+.bar3{height:6px;border-radius:3px;background:var(--grp);margin-top:6px;overflow:hidden}.bar3 i{display:block;height:100%;background:var(--inc)}
+/* tab bar */
+.tabbar{flex:none;z-index:20;background:var(--card);border-top:1px solid var(--line);padding-bottom:var(--sab)}
+.tabbar .in{height:56px;display:grid;grid-template-columns:1fr 1fr 76px 1fr 1fr;align-items:center}
+.tb{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:12px;color:var(--mut)}
+.tb .e{font-size:22px;filter:grayscale(1) opacity(.65);line-height:1.1}
+.tb.on{color:var(--org);font-weight:600}.tb.on .e{filter:none}
+.tb:active{opacity:.55}
+.fab{justify-self:center;width:50px;height:50px;border-radius:25px;background:var(--org);color:#fff;font-size:34px;font-weight:300;line-height:1;display:grid;place-items:center;box-shadow:0 3px 10px rgba(249,155,29,.45)}
+.fab:active{transform:scale(.92);background:var(--orgd)}
+/* toast / banners */
+#msg,#err{pointer-events:none;position:fixed;left:50%;transform:translateX(-50%);z-index:400;max-width:min(92vw,480px);padding:11px 16px;border-radius:14px;font-size:15px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3);line-height:1.4}
+body.sheet-open #err{top:calc(8px + var(--sat))}
+#msg{bottom:calc(76px + var(--sab));background:#1f3d2c;color:#9df0c1}
+#err{top:calc(56px + var(--sat));background:#4a1a1d;color:#ffb3b0;width:max-content}
+.a2hs{position:fixed;left:12px;right:12px;bottom:calc(68px + var(--sab));z-index:300;max-width:496px;margin:0 auto;background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.28);padding:14px 14px 10px;border:1px solid var(--line)}
+.a2hs b{display:block;font-size:16px;margin-bottom:2px}.a2hs p{margin:0 0 6px;font-size:14px;color:var(--mut);line-height:1.5}
+.a2hs .go{display:block;margin-left:auto;height:44px;padding:0 18px;font-weight:700;color:var(--org)}
+.a2hs::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-8px;width:16px;height:16px;background:var(--card);transform:rotate(45deg);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* sheet */
+#scrim{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);opacity:0;visibility:hidden;transition:opacity .28s,visibility .28s}
+#scrim.on{opacity:1;visibility:visible}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:110;margin:0 auto;max-width:520px;max-height:94vh;display:flex;flex-direction:column;background:var(--bg);border-radius:18px 18px 0 0;transform:translateY(105%);visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility .32s;overflow:hidden}
+@supports(height:1dvh){#sheet{max-height:94dvh}}
+#sheet.on{transform:none;visibility:visible}
+#sheet.drag{transition:none}
+.sh_head{flex:none;background:var(--org);color:#fff;display:grid;grid-template-columns:48px 1fr 64px;align-items:center;gap:6px;padding:8px 6px 8px 6px;touch-action:none}
+.sh_head .x{width:44px;height:44px;font-size:20px;color:#fff}
+.seg3{grid-column:2;display:flex;background:rgba(255,255,255,.25);border-radius:9px;padding:2px}
+.seg3 button{flex:1;min-height:44px;border-radius:7px;font-size:15px;font-weight:700;color:#fff}
+.seg3 button.on{background:#fff;color:var(--orgd)}
+#sh_title{grid-column:2;text-align:center;font-weight:700;font-size:18px}
+.vbtn{grid-column:3;grid-row:1;justify-self:end;height:44px;padding:0 10px;font-size:15px;font-weight:700;color:#fff}
+.vbtn:active,.sh_head .x:active{opacity:.5}
+.amtbox{flex:none;display:flex;justify-content:flex-end;align-items:baseline;gap:8px;padding:8px 20px;min-height:70px;background:var(--card);border-bottom:1px solid var(--line);overflow:hidden;touch-action:none}
+.amtbox .flash{margin-right:auto;align-self:center;font-size:15px;font-weight:700;color:var(--inc);white-space:nowrap;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s}
+.amtbox .flash.on{opacity:1;transform:none}
+.amtbox.pulse{animation:pulse .9s ease}
+@keyframes pulse{0%{background:rgba(22,167,101,.22)}100%{background:var(--card)}}
+.amtbox .cur{font-size:17px;color:var(--mut);font-weight:600}
+#f_amt{font-size:44px;font-weight:700;letter-spacing:-1px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+#f_amt.z{color:var(--mut);opacity:.5}
+.amtbox.expense #f_amt:not(.z){color:var(--exp)}.amtbox.income #f_amt:not(.z){color:var(--inc)}
+.sh_body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:10px 12px 8px;-webkit-overflow-scrolling:touch}
+.lbl{font-size:13px;color:var(--mut);margin:2px 4px 6px}
+.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cat{min-height:64px;border-radius:12px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 0;font-size:12px;line-height:1.15;color:var(--mut);text-align:center;white-space:nowrap;border:2px solid transparent}
+.cat .e{font-size:24px;line-height:1}
+.cat:active{background:var(--press)}
+.cat.on{border-color:var(--org);color:var(--tx);font-weight:600}
+.subopt{display:grid;gap:6px}
+.subopt button{display:flex;align-items:center;gap:12px;min-height:58px;padding:6px 14px;border-radius:12px;background:var(--card);text-align:left;border:2px solid transparent}
+.subopt button .e{font-size:24px}.subopt button b{display:block;font-size:16px}.subopt button span{font-size:12.5px;color:var(--mut)}
+.subopt button.on{border-color:var(--org)}
+.chiprow{display:flex;align-items:center;gap:8px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.chiprow::-webkit-scrollbar{display:none}
+.chiprow>.ic{flex:none;width:24px;text-align:center;font-size:18px}
+.chip{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border-radius:22px;background:var(--card);font-size:15px;white-space:nowrap;overflow:hidden;border:2px solid transparent;color:var(--tx)}
+.chip.on{border-color:var(--org);color:var(--orgd);font-weight:700}
+.chip:active{background:var(--press)}
+.chip input[type=date]{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px;cursor:pointer}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.fields input{min-height:44px;border-radius:12px;background:var(--card);padding:0 12px;font-size:16px;width:100%;min-width:0}
+.fields input::placeholder{color:var(--mut);opacity:.7}
+.readonly{margin:12px 4px 0;font-size:13px;color:var(--mut);line-height:1.6}
+.keypad{flex:none;display:grid;grid-template-columns:repeat(3,1fr) 1.25fr;grid-template-rows:repeat(4,50px);gap:7px;padding:8px 12px calc(10px + var(--sab));background:var(--grp);border-top:1px solid var(--line)}
+.keypad button{border-radius:10px;background:var(--key);font-size:23px;font-weight:600;display:grid;place-items:center;box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.keypad button:active{background:var(--keyd)}
+.keypad .del{background:var(--keyd);font-size:20px}
+.keypad .done{grid-column:4;grid-row:2/5;background:var(--org);color:#fff;font-size:20px;font-weight:700;box-shadow:none}
+.keypad .done:active{background:var(--orgd)}.keypad .done:disabled{opacity:.55}
+dialog{background:var(--card);color:var(--tx);border:0;border-radius:16px;width:min(84vw,330px);padding:20px 18px 14px}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+#dlg_body{line-height:1.6;font-size:16px;text-align:center}
+#dlg_body .mut{font-size:13.5px}
+.dbtns{display:flex;gap:10px;margin-top:16px}
+.dbtns button{flex:1;min-height:46px;border-radius:12px;font-weight:700;background:var(--bg)}
+.dbtns button:active{opacity:.6}
+.dbtns button#dlg_yes{background:var(--org);color:#fff}
+.dbtns button#dlg_yes.danger{background:var(--exp)}
+@media(min-width:560px){#sheet{bottom:20px;border-radius:18px}}
+</style></head><body>
+<div id="err" role="alert"></div><div id="msg" role="status"></div>
+<div id="shell">
+  <header id="top">
+    <div class="bar">
+      <button class="hbtn" id="refresh" type="button" aria-label="重新整理">↻</button>
+      <h1><span id="hdr_title">記帳本</span><i id="live" title="即時連線"></i></h1>
+      <button class="hbtn" id="showvoid" type="button" aria-pressed="false"><span>顯示作廢</span></button>
+    </div>
+    <div class="pnav" id="pnav" hidden>
+      <button type="button" id="p_prev" aria-label="上一期">‹</button>
+      <div class="pl"><span id="p_label"></span><em id="p_tag">本期</em></div>
+      <button type="button" id="p_next" aria-label="下一期">›</button>
+    </div>
+  </header>
+  <main id="scroll">
+    <div id="gate" class="gate"><div class="sk"></div></div>
+    <div id="app" hidden>
+      <section id="tab_list">
+        <div class="sumcard">
+          <div class="k">本期支出</div>
+          <div class="big num"><small>NT$</small><span id="expense">0</span></div>
+          <div class="cols3">
+            <div><b class="num" id="income_w" style="color:var(--inc)"><span id="income">0</span></b><span>收入</span></div>
+            <div><b class="num" id="net">0</b><span>結餘</span></div>
+            <div><b class="num" id="gap"></b><span>距離目標</span></div>
+          </div>
+          <div class="prog"><div class="bar2"><i id="pbar"></i></div><div class="meta"><span>月收入目標 NT$ <span id="target"></span></span><span id="ppct"></span></div></div>
+        </div>
+        <div id="list"></div>
+      </section>
+      <section id="tab_stats" hidden>
+        <div class="utabs" id="utabs"><button type="button" data-s="cat" class="on">支出類別占比</button><button type="button" data-s="trend">近 6 期收支</button></div>
+        <div id="stat_cat"><div class="panel" id="cat_wrap"></div><div id="cat_tbl"></div></div>
+        <div id="stat_trend" hidden><div class="panel" id="trend_wrap"></div><div id="trend_tbl"></div></div>
+      </section>
+      <section id="tab_bills" hidden>
+        <div class="gh"><span id="bill_h">本期固定帳單</span><span class="num" id="bill_sum"></span></div>
+        <div id="bills"></div>
+        <div class="foot" id="bill_foot">點一下未繳的帳單，就會標成已繳。</div>
+      </section>
+      <section id="tab_assets" hidden>
+        <div class="assetsum"><div><b class="num" id="as_bal">0</b><span id="as_bal_l">已填帳戶餘額合計</span></div><div><b class="num" id="as_debt" style="color:var(--exp)">0</b><span>負債剩餘</span></div></div>
+        <div class="gh"><span>帳戶清單</span><span>只能看，不能改</span></div><div id="accts"></div>
+        <div class="gh"><span>負債</span></div><div id="debts"></div>
+      </section>
+    </div>
+  </main>
+  <nav class="tabbar" id="tabbar"><div class="in">
+    <button class="tb on" data-tab="list" type="button"><span class="e">🧾</span>記帳本</button>
+    <button class="tb" data-tab="stats" type="button"><span class="e">📊</span>統計</button>
+    <button class="fab" id="fab" type="button" aria-label="記一筆">+</button>
+    <button class="tb" data-tab="bills" type="button"><span class="e">📌</span>帳單</button>
+    <button class="tb" data-tab="assets" type="button"><span class="e">🏦</span>帳戶</button>
+  </div></nav>
+</div>
+<div class="a2hs" id="a2hs" hidden><b>像 App 一樣用</b><p>點瀏覽器下方的「分享」⬆️，再選「加入主畫面」，之後從主畫面圖示直接開啟。</p><button class="go" id="a2hs_ok" type="button">知道了</button></div>
+
+<div id="scrim"></div>
+<section id="sheet" role="dialog" aria-modal="true" aria-label="記一筆">
+  <div class="sh_head" id="sh_head">
+    <button class="x" id="sh_close" type="button" aria-label="關閉">✕</button>
+    <div class="seg3" id="f_type"><button type="button" data-v="expense" class="on">支出</button><button type="button" data-v="income">收入</button><button type="button" data-v="transfer">轉帳</button></div>
+    <div id="sh_title" hidden>編輯</div>
+    <button class="vbtn" id="sh_void" type="button" hidden>作廢</button>
+  </div>
+  <div class="amtbox expense" id="amtbox"><span class="flash" id="flash" aria-live="polite"></span><span class="cur">NT$</span><span id="f_amt" class="z">0</span></div>
+  <div class="sh_body">
+    <div id="f_cat_wrap"><div class="lbl">分類（不選就記成「其他」）</div><div class="cats" id="f_cats"></div></div>
+    <div id="f_sub_wrap" hidden><div class="lbl">哪一種（都不算收入或支出）</div>
+      <div class="subopt" id="f_sub">
+        <button type="button" data-v="transfer" class="on"><span class="e">🔁</span><div><b>自己帳戶互轉</b><span>從自己的一個戶頭轉到另一個</span></div></button>
+        <button type="button" data-v="reimbursement"><span class="e">🤝</span><div><b>代收代付</b><span>室友房租、弟弟還款</span></div></button>
+      </div></div>
+    <div id="f_chips_wrap">
+      <div class="chiprow"><span class="ic">📅</span>
+        <button type="button" class="chip" id="d_today">今天</button><button type="button" class="chip" id="d_yest">昨天</button>
+        <label class="chip" id="d_pick"><span id="f_date_txt">選日期</span><input id="f_date" type="date" aria-label="日期"></label></div>
+      <div class="chiprow" id="f_paylist"><span class="ic">💳</span></div>
+      <div class="chiprow"><span class="ic">🔁</span><button type="button" class="chip" id="f_more" aria-pressed="false">連續記帳（記完不關閉）</button></div>
+    </div>
+    <div class="fields"><input id="f_merchant" placeholder="店家（選填）" autocomplete="off"><input id="f_note" placeholder="備註（選填）" autocomplete="off"></div>
+    <div class="readonly" id="e_info" hidden></div>
+  </div>
+  <div class="keypad" id="keypad">
+    <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button><button type="button" class="del" data-k="del" aria-label="刪除">⌫</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+    <button type="button" class="done" id="f_submit">完成</button>
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="00">00</button><button type="button" data-k="0">0</button><button type="button" data-k=".">.</button>
+  </div>
+</section>
+
+<dialog id="dlg"><div id="dlg_body"></div><div class="dbtns"><button id="dlg_no" type="button">取消</button><button id="dlg_yes" type="button">確定</button></div></dialog>
+
+<script>
+const URL_='https://wbfdpuytffyaetghqkbl.supabase.co', APIKEY='sb_publishable_yXl1iCBorFdHNsTl1A4UPg_MQLMYukO';
+function loadScript(src){return new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.async=true;e.onload=res;e.onerror=()=>rej(new Error('載入失敗：'+src));document.head.appendChild(e);});}
+const need={};function needLib(name,src,test){return test()?Promise.resolve():(need[name]=need[name]||loadScript(src).catch(e=>{need[name]=null;throw e;}));}
+const needChart=()=>needLib('chart','chart.min.js',()=>!!window.Chart);
+const needSupabase=()=>needLib('sb','supabase.js',()=>!!window.supabase);
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+// token sources, in order: /k/TOKEN/ path (what iOS keeps when you add to the home screen), ?k=, #token (the old link), saved copy
+function tokenFrom(s){
+  s=String(s||'').trim();if(!s)return '';
+  let m=s.match(/\/k\/([A-Za-z0-9_-]{20,})/);if(m)return m[1];
+  m=s.match(/[?&#]k=([^&#\s]+)/);if(m){try{return decodeURIComponent(m[1]);}catch(e){return m[1];}}
+  m=s.match(/#([A-Za-z0-9_-]{20,})/);if(m)return m[1];
+  m=s.match(/^[A-Za-z0-9_-]{20,}$/);return m?m[0]:'';
+}
+let KEY=tokenFrom(location.pathname)||tokenFrom(location.search)||tokenFrom(location.hash);
+const KEY_FROM_URL=KEY.length>=20;
+if(!KEY_FROM_URL)KEY=LS.get('kk_key')||'';   // launched from the icon with a bare URL: use the saved key
+const STANDALONE=!!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
+document.documentElement.classList.toggle('standalone',STANDALONE);
+const CATS=['住','吃','交通','訂閱','工作','保險','健康','娛樂與社交','購物','其他'];
+const CAT_EMOJI={住:'🏠',吃:'🍜',交通:'🚇',訂閱:'📺',工作:'💼',保險:'🛡️',健康:'💊',娛樂與社交:'🎉',購物:'🛍️',其他:'🧾'};
+const CAT_COLOR={住:'#4b8bf5',吃:'#f99b1d',交通:'#22b8a8',訂閱:'#9b6cf0',工作:'#7d8aa0',保險:'#43a85f',健康:'#ef4f78',娛樂與社交:'#f0c020',購物:'#e55fc8',其他:'#8e8e93'};
+const SRC_COLOR=['#4b8bf5','#22b8a8','#9b6cf0','#ef4f78','#43a85f','#7d8aa0'];
+const TYPE_EMOJI={income:'💰',transfer:'🔁',reimbursement:'🤝'};
+const PAYS=['現金','信用卡','LINE Pay','匯款'];
+const payLabel=p=>p==='轉帳'?'匯款':(p||'');
+const SRC_TYPE={expense:'支出',income:'收入',transfer:'轉帳',reimbursement:'代收代付'};
+const $=id=>document.getElementById(id);
+const nt=n=>n==null?'未填':Math.round(Number(n)).toLocaleString('zh-TW');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDay=iso=>new Date(iso).toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei',month:'numeric',day:'numeric'});
+const fmtTime=iso=>new Date(iso).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false});
+const dayKey=iso=>new Date(iso).toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'});
+const taipeiToday=()=>dayKey(new Date().toISOString());
+const addDays=(k,n)=>{const d=new Date(k+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const addMonths=(k,n)=>{const d=new Date(k+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+n);return d.toISOString().slice(0,10)};
+const srcColor=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return SRC_COLOR[h%SRC_COLOR.length]};
+function zhErr(m){
+  m=String(m||'');
+  if(/invalid bot key/.test(m))return '連結裡的密鑰不對，請用原本給你的完整連結開啟。';
+  if(/cannot write/.test(m))return '這把密鑰沒有寫入權限。';
+  if(/cannot read/.test(m))return '這把密鑰沒有讀取權限。';
+  if(/amount must be/.test(m))return '金額要大於 0。';
+  if(/not found or already void/.test(m))return '這筆找不到，或已經作廢了。';
+  if(/is void and cannot be edited/.test(m))return '這筆已作廢，不能修改。';
+  if(/nothing to update/.test(m))return '沒有要改的內容。';
+  if(/reason required/.test(m))return '作廢要寫原因。';
+  if(/Failed to fetch|NetworkError|Load failed/.test(m))return '連不上伺服器，請檢查網路後再試一次。';
+  return '發生錯誤：'+m;
+}
+class NetErr extends Error{}
+async function rpc(name,args){
+  let r,t;const ac=typeof AbortController==='function'?new AbortController():null,to=setTimeout(()=>ac&&ac.abort(),15000);
+  try{r=await fetch(URL_+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},body:JSON.stringify({p_key:KEY,...args}),cache:'no-store',signal:ac?ac.signal:undefined});t=await r.text();}
+  catch(e){throw new NetErr(e&&e.name==='AbortError'?'連線逾時，網路好像不太順，稍後再試。':zhErr(e.message));}
+  finally{clearTimeout(to);}
+   let j; try{j=JSON.parse(t)}catch(e){j=null}
+  if(!r.ok)throw new Error(zhErr(j&&j.message||t));
+  return j;
+}
+let errT;function showErr(m){const e=$('err');e.textContent=m;e.style.display=m?'block':'none';clearTimeout(errT);if(m)errT=setTimeout(()=>e.style.display='none',9000);}
+let flashT;
+function flashIn(m){const f=$('flash');f.textContent='✓ '+m;f.classList.add('on');const b=$('amtbox');b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse');clearTimeout(flashT);flashT=setTimeout(()=>f.classList.remove('on'),1800);}
+let msgT;function showMsg(m){if($('sheet').classList.contains('on')){flashIn(m);return;}const e=$('msg');e.textContent=m;e.style.display='block';clearTimeout(msgT);msgT=setTimeout(()=>e.style.display='none',4500);}
+function ask(html,yes='確定',no='取消',danger=false){return new Promise(res=>{const d=$('dlg');$('dlg_body').innerHTML=html;$('dlg_yes').textContent=yes;$('dlg_no').textContent=no;$('dlg_yes').classList.toggle('danger',danger);
+  const done=v=>{d.close();res(v)};$('dlg_yes').onclick=()=>done(true);$('dlg_no').onclick=()=>done(false);d.oncancel=()=>res(false);d.showModal();});}
+
+/* ---------- data + render ---------- */
+let D=null, TX=[], charts={}, tab='list', stab='cat', CUR=null, VIEW=null, voidOn=false, SIG='', seq=0, firstLoad=true;
+async function load(opt={}){
+  if(KEY.length<20)return;   // no token yet: stay on the paste screen, never fire a doomed request
+  const silent=!!opt.silent, my=++seq;
+  if(!silent)showErr('');
+  try{
+    const pa=VIEW?{p_period_start:VIEW}:{};
+    const [o,l]=await Promise.all([rpc('get_overview',pa),rpc('list_transactions',{...pa,p_include_void:voidOn})]);
+    if(my!==seq)return;
+    if(!CUR&&!VIEW)CUR=o.period_start;
+    LS.set('kk_key',KEY);
+    try{LS.set('kk_cache',JSON.stringify({k:KEY.slice(0,10),o,l,cur:CUR}));}catch(e){}
+    const sig=JSON.stringify([o,l,VIEW,voidOn]);
+    if(sig===SIG&&!firstLoad){return;}
+    SIG=sig;D=o;TX=l;render();
+    if(silent)showErr('');
+  }catch(e){
+    if(silent&&(e instanceof NetErr)&&D)return;
+    showErr(e.message);
+    if(firstLoad&&!D){window.__kkReady=true;$('gate').innerHTML=lockHtml();}
+  }
+}
+const pasteBox='<div class="paste"><input id="paste_in" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="貼上你的記帳連結"><button type="button" id="paste_go">開啟</button></div>';
+const lockHtml=()=>'<div class="em">🔒</div><div><b style="color:var(--tx);font-size:18px">打不開</b></div><div style="margin-top:6px;font-size:14px">請用原本給你的完整連結再開一次，或在下面貼上連結</div>'+pasteBox;
+const needLinkHtml=()=>'<div class="em">🔗</div><div><b style="color:var(--tx);font-size:18px">貼上你的記帳連結</b></div><div style="margin-top:6px;font-size:14px">第一次從主畫面開啟，需要貼一次原本給你的完整連結，之後就不用了</div>'+pasteBox;
+function periodText(){const ps=D.period_start,e=new Date(D.period_end+'T00:00:00');return `${ps.slice(5).replace('-','/')} 到 ${e.getMonth()+1}/${e.getDate()}`;}
+function render(){
+  window.__kkReady=true;{const d=document.getElementById('kkdie');if(d&&d.getAttribute('data-slow'))d.remove();}const first=firstLoad;firstLoad=false;$('gate').hidden=true;$('app').hidden=false;
+  const cur=D.summary||{income:0,expense:0};
+  const isCur=D.period_start===CUR;
+  $('p_label').textContent=periodText().replace(' 到 ',' – ');
+  $('p_tag').textContent=isCur?'本期':D.period_start.slice(0,4);$('p_tag').classList.toggle('old',!isCur);
+  $('p_next').disabled=isCur;
+  $('income').textContent=nt(cur.income);$('expense').textContent=nt(cur.expense);
+  const net=Number(cur.income||0)-Number(cur.expense||0);
+  $('net').textContent=(net>0?'+':net<0?'−':'')+nt(Math.abs(net));$('net').style.color=net>0?'var(--inc)':net<0?'var(--exp)':'';
+  $('target').textContent=nt(D.target);
+  const tgt=Number(D.target)||0, inc=Number(cur.income)||0, gap=tgt-inc;
+  $('gap').textContent=gap>0?'還差 '+nt(gap):'已達標';
+  const pct=tgt>0?Math.min(100,inc/tgt*100):0;
+  $('pbar').style.width=pct+'%';$('ppct').textContent=(pct>=10||pct===0?Math.round(pct):pct.toFixed(1))+'%';
+  renderList();renderBills();renderAssets();
+  if(tab==='stats')renderStats();
+  if(first){normalizeUrl();maybeHint();startRealtime();}
+}
+function txView(t){
+  const exp=t.type==='expense',cat=t.category||'其他';
+  return {emoji:exp?(CAT_EMOJI[cat]||'🧾'):TYPE_EMOJI[t.type]||'🧾',title:t.merchant||(exp?cat:SRC_TYPE[t.type]),cat,exp};
+}
+function renderList(){
+  if(!TX.length){$('list').innerHTML='<div class="empty" style="margin-top:12px"><div class="em">🗒️</div><b>這一期還沒有紀錄</b><span>點下面的「＋」記下第一筆</span></div>';return;}
+  const groups=[],idx={};
+  TX.forEach(t=>{const k=dayKey(t.occurred_at);if(!(k in idx)){idx[k]=groups.length;groups.push({k,items:[]});}groups[idx[k]].items.push(t);});
+  const today=taipeiToday(),yest=addDays(today,-1);
+  $('list').innerHTML=groups.map(g=>{
+    let e=0,i=0;g.items.forEach(t=>{if(t.voided_at)return;if(t.type==='expense')e+=Number(t.amount);if(t.type==='income')i+=Number(t.amount);});
+    const wd=new Date(g.k+'T12:00:00Z').toLocaleDateString('zh-TW',{timeZone:'UTC',weekday:'short'});
+    const label=g.k===today?'今天':g.k===yest?'昨天':'';
+    const md=Number(g.k.slice(5,7))+'/'+Number(g.k.slice(8));
+    const tot=[e?`支出:${nt(e)}`:'',i?`收入:${nt(i)}`:''].filter(Boolean).join('　');
+    return `<div class="gh"><span><b>${md}</b>${label?label+'　':''}${wd}</span><span class="num">${tot}</span></div><div class="rows">`+g.items.map(t=>{
+      const v=txView(t),isVoid=!!t.voided_at,sign=t.type==='income'?'+':(t.type==='expense'?'−':'');
+      const bits=[];
+      if(t.merchant&&v.exp)bits.push(v.cat);
+      bits.push(fmtTime(t.occurred_at));
+      if(t.note)bits.push(t.note);
+      if(t.edit_count>0)bits.push('已修改'+t.edit_count+'次');
+      if(isVoid)bits.push('已作廢：'+(t.void_reason||''));
+      return `<button type="button" class="tx ${isVoid?'void':''}" data-id="${t.id}"><div class="ico">${v.emoji}</div><div class="mid"><div class="ttl">${esc(v.title)}</div><div class="sub"><span class="tag" style="background:${srcColor(t.source)}">${esc(t.source)}</span><span class="t">${esc(bits.join(' | '))}</span></div></div><div class="right"><div class="amt ${esc(t.type)}">${sign}${nt(t.amount)}</div><div class="acct">${esc(payLabel(t.payment_method))}</div></div></button>`;
+    }).join('')+`</div>`;
+  }).join('');
+}
+function emptyBox(em,title,sub){return `<div class="empty" style="min-height:230px"><div class="em">${em}</div><b>${title}</b><span>${sub}</span></div>`;}
+const centerText={id:'centerText',afterDraw(c){const t=c.config.options.plugins.centerText;if(!t)return;const {ctx,chartArea:a}=c;const x=(a.left+a.right)/2,y=(a.top+a.bottom)/2;const cs=getComputedStyle(document.documentElement);ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=cs.getPropertyValue('--mut');ctx.font='13px -apple-system,sans-serif';ctx.fillText('本期支出',x,y-14);ctx.fillStyle=cs.getPropertyValue('--tx');ctx.font='700 22px -apple-system,sans-serif';ctx.fillText(t.text,x,y+10);ctx.restore();}};
+function periodDays(){
+  const s=D.period_start,e=D.period_end,today=taipeiToday();
+  const len=Math.round((new Date(e+'T00:00:00Z')-new Date(s+'T00:00:00Z'))/864e5)+1;
+  if(today>e)return len;if(today<s)return 1;
+  return Math.max(1,Math.round((new Date(today+'T00:00:00Z')-new Date(s+'T00:00:00Z'))/864e5)+1);
+}
+function renderStats(){
+  if(!window.Chart){needChart().then(()=>{if(tab==='stats'&&D)renderStats();}).catch(e=>showErr('圖表載入失敗，請重新整理。'));return;}
+  Object.values(charts).forEach(c=>c.destroy());charts={};
+  const css=getComputedStyle(document.documentElement),mut=css.getPropertyValue('--mut').trim(),cardc=css.getPropertyValue('--card').trim(),linec=css.getPropertyValue('--line').trim(),txc=css.getPropertyValue('--tx').trim();
+  const cs=(D.category_share||[]).filter(r=>Number(r.expense)>0);
+  if(cs.length){
+    const total=cs.reduce((s,r)=>s+Number(r.expense),0);
+    $('cat_wrap').innerHTML='<div class="chartbox"><canvas id="cat"></canvas></div>';
+    $('cat_tbl').innerHTML=`<div class="totline"><span>合計 <b class="num">${nt(total)}</b></span><span>平均每天 <b class="num">${nt(total/periodDays())}</b></span></div><table class="tbl"><thead><tr><th>類別</th><th>金額</th><th>比例</th></tr></thead><tbody>`+cs.map(r=>`<tr><td><span class="dot" style="background:${CAT_COLOR[r.category]||'#8e8e93'}"></span>${CAT_EMOJI[r.category]||''} ${esc(r.category)}</td><td class="num">${nt(r.expense)}</td><td class="num" style="color:var(--org);font-weight:700">${(Number(r.expense)/total*100).toFixed(1)}%</td></tr>`).join('')+'</tbody></table>';
+    charts.cat=new Chart($('cat'),{type:'doughnut',plugins:[centerText],data:{labels:cs.map(r=>r.category),datasets:[{data:cs.map(r=>Number(r.expense)),backgroundColor:cs.map(r=>CAT_COLOR[r.category]||'#8e8e93'),borderColor:cardc,borderWidth:3}]},options:{maintainAspectRatio:false,cutout:'66%',animation:{duration:450},plugins:{legend:{display:false},centerText:{text:nt(total)},tooltip:{callbacks:{label:c=>' '+c.label+' '+nt(c.parsed)}}}}});
+  }else{$('cat_wrap').innerHTML=emptyBox('🍩','這一期還沒有支出','記下第一筆支出，這裡就會出現分類占比');$('cat_tbl').innerHTML='';}
+  const tr=[...(D.recent_periods||[])].reverse();
+  if(tr.some(r=>Number(r.income)>0||Number(r.expense)>0)){
+    $('trend_wrap').innerHTML='<div class="chartbox"><canvas id="trend"></canvas></div>';
+    const short=v=>Math.abs(v)>=10000?(v/10000)+'萬':v;
+    charts.tr=new Chart($('trend'),{type:'bar',data:{labels:tr.map(r=>r.period_start.slice(5).replace('-','/')),datasets:[{label:'收入',data:tr.map(r=>Number(r.income)),backgroundColor:'#16a765',borderRadius:4,maxBarThickness:18},{label:'支出',data:tr.map(r=>Number(r.expense)),backgroundColor:'#e5484d',borderRadius:4,maxBarThickness:18}]},options:{maintainAspectRatio:false,animation:{duration:450},scales:{x:{grid:{display:false},border:{display:false},ticks:{color:mut}},y:{beginAtZero:true,grid:{color:linec},border:{display:false},ticks:{color:mut,callback:short,maxTicksLimit:5}}},plugins:{legend:{position:'bottom',labels:{color:txc,usePointStyle:true,boxWidth:8,padding:14}},tooltip:{callbacks:{label:c=>' '+c.dataset.label+' '+nt(c.parsed.y)}}}}});
+    $('trend_tbl').innerHTML='<table class="tbl"><thead><tr><th>期間</th><th>收入</th><th>支出</th><th>結餘</th></tr></thead><tbody>'+[...tr].reverse().map(r=>{const n=Number(r.income)-Number(r.expense);return `<tr><td>${r.period_start.slice(5).replace('-','/')}</td><td class="num" style="color:var(--inc)">${nt(r.income)}</td><td class="num" style="color:var(--exp)">${nt(r.expense)}</td><td class="num">${n<0?'−':''}${nt(Math.abs(n))}</td></tr>`}).join('')+'</tbody></table>';
+  }else{$('trend_wrap').innerHTML=emptyBox('📊','還沒有收支資料','記帳滿一期後，這裡會顯示近 6 期的收入和支出');$('trend_tbl').innerHTML='';}
+}
+function renderBills(){
+  const B=D.bills||[],isCur=D.period_start===CUR;
+  $('bill_h').textContent=(isCur?'本期':D.period_start.slice(5).replace('-','/')+' 那一期')+'固定帳單';
+  $('bill_foot').textContent=isCur?'點一下未繳的帳單，就會標成已繳。':'這是過去的一期，只能看，不能標已繳。';
+  if(!B.length){$('bills').innerHTML=emptyBox('📌','沒有固定帳單','');$('bill_sum').textContent='';return;}
+  const paid=B.filter(b=>b.paid_at),sum=a=>a.reduce((s,b)=>s+Number(b.amount||0),0);
+  $('bill_sum').textContent=`已繳 ${paid.length}/${B.length}　還要繳 ${nt(sum(B)-sum(paid))}`;
+  $('bills').innerHTML=B.map(b=>{
+    const inner=`<div class="due"><b class="num">${b.due_day}</b><i>號</i></div><div style="flex:1;min-width:0"><div class="t1">${esc(b.name)}</div><div class="t2 num">NT$ ${nt(b.amount)}</div></div>`+
+      (b.paid_at?`<span class="pill ok">已繳 ${fmtDay(b.paid_at)}${b.paid_by?'・'+esc(b.paid_by):''}</span>`:`<span class="pill todo">${isCur?'標已繳':'未繳'}</span>`);
+    return (b.paid_at||!isCur)?`<div class="cardrow" data-bill="${esc(b.name)}">${inner}</div>`:`<button type="button" class="cardrow" data-bill="${esc(b.name)}">${inner}</button>`;
+  }).join('');
+}
+function renderAssets(){
+  const A=D.accounts||[],DB=D.debts||[];
+  const known=A.filter(a=>a.balance!=null),unk=A.length-known.length;
+  $('as_bal').textContent=nt(known.reduce((s,a)=>s+Number(a.balance),0));
+  $('as_bal_l').textContent=unk?`已填餘額合計（${unk} 個還沒填）`:'帳戶餘額合計';
+  $('as_debt').textContent=nt(DB.reduce((s,d)=>s+Number(d.remaining||0),0));
+  $('accts').innerHTML=A.length?A.map(a=>{
+    const has=a.balance!=null;
+    return `<div class="grp"><div class="cardrow" style="cursor:default"><div class="ico">🏦</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}</div><div class="t2">${a.balance_as_of?fmtDay(a.balance_as_of)+' 查的':'還沒有餘額資料'}</div></div><div class="amt num" style="${has?'color:var(--inc)':'color:var(--mut);font-size:15px'}">${has?nt(a.balance):'還沒查'}</div></div>${a.note?`<div class="note">${esc(a.note)}</div>`:''}</div>`;}).join(''):emptyBox('🏦','沒有帳戶資料','');
+  $('debts').innerHTML=DB.length?DB.map(d=>{
+    const tot=Number(d.principal)||0,rep=Number(d.repaid)||0,p=tot>0?Math.min(100,rep/tot*100):0;
+    return `<div class="cardrow" style="cursor:default"><div class="ico">💸</div><div style="flex:1;min-width:0"><div class="t1">${esc(d.name)}</div><div class="bar3"><i style="width:${p}%"></i></div><div class="t2 num">已還 ${nt(rep)}${tot?' ／ 本金 '+nt(tot):''}</div></div><div class="amt num" style="color:var(--exp)">剩 ${nt(d.remaining)}</div></div>`;}).join(''):emptyBox('🎉','沒有負債','');
+}
+/* ---------- tabs + period nav ---------- */
+const TITLES={list:'記帳本',stats:'統計',bills:'帳單',assets:'帳戶'};
+function showTab(t){
+  tab=t;
+  ['list','stats','bills','assets'].forEach(x=>{$('tab_'+x).hidden=x!==t;});
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('hdr_title').textContent=TITLES[t];
+  $('pnav').hidden=!(t==='list'||t==='stats');
+  $('showvoid').hidden=t!=='list';
+  $('scroll').scrollTop=0;
+  if(t==='stats'&&D)renderStats();
+}
+$('tabbar').addEventListener('click',ev=>{const b=ev.target.closest('.tb');if(b)showTab(b.dataset.tab);});
+$('utabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;stab=b.dataset.s;[...$('utabs').children].forEach(x=>x.classList.toggle('on',x===b));$('stat_cat').hidden=stab!=='cat';$('stat_trend').hidden=stab!=='trend';$('scroll').scrollTop=0;if(D)renderStats();});
+$('p_prev').onclick=()=>{if(!D)return;VIEW=addMonths(D.period_start,-1);SIG='';load();};
+$('p_next').onclick=()=>{if(!D||D.period_start>=CUR)return;const n=addMonths(D.period_start,1);VIEW=n>=CUR?null:n;SIG='';load();};
+$('refresh').onclick=async()=>{SIG='';await load();if($('err').style.display!=='block')showMsg('已更新');};
+$('showvoid').onclick=()=>{voidOn=!voidOn;$('showvoid').setAttribute('aria-pressed',String(voidOn));SIG='';load();};
+
+/* ---------- sheet (add / edit) ---------- */
+let mode='add', editing=null, ftype='expense', fsub='transfer', fcat='其他', fpay='現金', amt='', idem=null, busy=false, more=false;
+$('f_cats').innerHTML=CATS.map(c=>`<button type="button" class="cat" data-cat="${esc(c)}"><span class="e">${CAT_EMOJI[c]}</span>${esc(c)}</button>`).join('');
+$('f_paylist').insertAdjacentHTML('beforeend',PAYS.map(p=>`<button type="button" class="chip" data-pay="${esc(p)}">${esc(p)}</button>`).join(''));
+function amtDisplay(){
+  const el=$('f_amt');
+  if(!amt){el.textContent='0';el.classList.add('z');return;}
+  const [i,d]=amt.split('.');
+  el.textContent=Number(i).toLocaleString('en-US')+(d!==undefined?'.'+d:'');
+  el.classList.remove('z');
+}
+function pressKey(k){
+  if(k==='del'){amt=amt.slice(0,-1);if(amt==='0')amt='';}
+  else if(k==='.'){if(amt.includes('.'))return;amt=(amt||'0')+'.';}
+  else{
+    if(!amt&&(k==='0'||k==='00'))return;
+    const [i,d]=(amt+k).split('.');
+    if(d!==undefined?d.length>2:i.length>9)return;
+    amt+=k;
+  }
+  amtDisplay();
+}
+$('keypad').addEventListener('click',ev=>{const b=ev.target.closest('button[data-k]');if(b){showErr('');pressKey(b.dataset.k);}});
+function syncSheet(){
+  const add=mode==='add';
+  $('f_type').hidden=!add;$('sh_title').hidden=add;$('sh_void').hidden=add;
+  $('sh_title').textContent='編輯'+(editing?'・'+SRC_TYPE[editing.type]:'');
+  [...$('f_type').children].forEach(b=>b.classList.toggle('on',b.dataset.v===ftype));
+  const t=add?ftype:editing.type, isExp=t==='expense';
+  $('amtbox').className='amtbox '+(t==='income'?'income':t==='expense'?'expense':'');
+  $('f_cat_wrap').hidden=!isExp;
+  $('f_sub_wrap').hidden=!(add&&ftype==='transfer');
+  $('f_chips_wrap').hidden=!add;
+  $('e_info').hidden=add;
+  [...$('f_cats').children].forEach(b=>b.classList.toggle('on',b.dataset.cat===fcat));
+  [...$('f_sub').children].forEach(b=>b.classList.toggle('on',b.dataset.v===fsub));
+  [...$('f_paylist').querySelectorAll('[data-pay]')].forEach(b=>b.classList.toggle('on',b.dataset.pay===fpay));
+  const d=$('f_date').value||taipeiToday(),today=taipeiToday(),yest=addDays(today,-1);
+  $('d_today').classList.toggle('on',d===today);$('d_yest').classList.toggle('on',d===yest);
+  const custom=d!==today&&d!==yest;
+  $('d_pick').classList.toggle('on',custom);
+  $('f_date_txt').textContent=custom?Number(d.slice(5,7))+'/'+Number(d.slice(8)):'選日期';
+  $('f_more').classList.toggle('on',more);$('f_more').setAttribute('aria-pressed',String(more));
+  document.querySelector('.sh_body').scrollTop=0;
+}
+function openSheet(){clearTimeout(msgT);$('msg').style.display='none';document.body.classList.add('sheet-open');$('scrim').classList.add('on');$('sheet').classList.add('on');$('sheet').style.transform='';$('sheet').setAttribute('aria-label',mode==='add'?'記一筆':'編輯');}
+function afterClose(m){setTimeout(()=>showMsg(m),380);}
+function closeSheet(){document.body.classList.remove('sheet-open');$('sheet').classList.remove('drag');$('sheet').style.transform='';$('scrim').classList.remove('on');$('sheet').classList.remove('on');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();}
+function openAdd(){
+  mode='add';editing=null;ftype='expense';fsub='transfer';fcat='其他';fpay='現金';more=false;amt='';idem=null;busy=false;
+  $('f_date').value=taipeiToday();$('f_merchant').value='';$('f_note').value='';$('f_submit').disabled=false;
+  amtDisplay();syncSheet();openSheet();
+}
+function openEdit(t){
+  mode='edit';editing=t;ftype=t.type;fcat=t.category||'其他';amt=String(Number(t.amount));busy=false;
+  $('f_merchant').value=t.merchant||'';$('f_note').value=t.note||'';$('f_submit').disabled=false;
+  $('e_info').innerHTML=`記錄者：${esc(t.source)}　${fmtDay(t.occurred_at)} ${fmtTime(t.occurred_at)}${t.payment_method?'　'+esc(payLabel(t.payment_method)):''}${t.edit_count>0?'<br>已修改 '+t.edit_count+' 次（每次舊值都有留紀錄）':''}`;
+  amtDisplay();syncSheet();openSheet();
+}
+$('fab').onclick=openAdd;
+$('sh_close').onclick=closeSheet;$('scrim').onclick=closeSheet;
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&$('sheet').classList.contains('on')&&!$('dlg').open)closeSheet();});
+$('f_type').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;ftype=b.dataset.v;syncSheet();});
+$('f_cats').addEventListener('click',ev=>{const b=ev.target.closest('.cat');if(!b)return;fcat=b.dataset.cat;syncSheet();});
+$('f_sub').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;fsub=b.dataset.v;syncSheet();});
+$('f_paylist').addEventListener('click',ev=>{const b=ev.target.closest('[data-pay]');if(!b)return;fpay=b.dataset.pay;syncSheet();});
+$('d_today').onclick=()=>{$('f_date').value=taipeiToday();syncSheet();};
+$('d_yest').onclick=()=>{$('f_date').value=addDays(taipeiToday(),-1);syncSheet();};
+$('f_date').addEventListener('input',()=>{if(!$('f_date').value)$('f_date').value=taipeiToday();syncSheet();});
+$('f_more').onclick=()=>{more=!more;syncSheet();};
+/* swipe down on the header / amount area to dismiss */
+(function(){
+  let y0=null,dy=0;const sh=$('sheet');
+  const start=ev=>{y0=ev.touches[0].clientY;dy=0;sh.classList.add('drag');};
+  const move=ev=>{if(y0==null)return;dy=Math.max(0,ev.touches[0].clientY-y0);sh.style.transform=`translateY(${dy}px)`;$('scrim').style.opacity=String(Math.max(0,1-dy/500));};
+  const end=()=>{if(y0==null)return;const d=dy;y0=null;sh.classList.remove('drag');$('scrim').style.opacity='';if(d>110)closeSheet();else sh.style.transform='';};
+  ['sh_head','amtbox'].forEach(id=>{const el=$(id);el.addEventListener('touchstart',start,{passive:true});el.addEventListener('touchmove',move,{passive:true});el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);});
+})();
+$('list').addEventListener('click',ev=>{
+  const row=ev.target.closest('.tx');if(!row)return;
+  const t=TX.find(x=>x.id===Number(row.dataset.id));if(!t)return;
+  if(t.voided_at){showMsg('這筆已作廢（'+(t.void_reason||'沒寫原因')+'），不能修改');return;}
+  openEdit(t);
+});
+$('bills').addEventListener('click',async ev=>{
+  const el=ev.target.closest('button[data-bill]');if(!el)return;
+  const b=D.bills.find(x=>x.name===el.dataset.bill);if(!b||b.paid_at)return;
+  if(await ask(`把「${esc(b.name)}」NT$ ${nt(b.amount)} 標記為本期已繳？`,'已繳')){
+    try{showErr('');await rpc('mark_bill_paid',{p_bill_name:b.name});showMsg('已標記「'+b.name+'」已繳');SIG='';await load();}catch(e){showErr(e.message);}
+  }
+});
+function occurredAt(){
+  const d=$('f_date').value||taipeiToday();
+  if(d===taipeiToday())return new Date().toISOString();
+  return d+'T12:00:00+08:00';
+}
+$('sh_void').onclick=async()=>{
+  const t=editing;if(!t)return;
+  if(await ask(`確定作廢這筆 NT$ ${nt(t.amount)} 嗎？<br><span class="mut">作廢不會真的刪掉，只是不算進總數，打開「顯示作廢」還是看得到。</span>`,'作廢','先不要',true)){
+    try{showErr('');await rpc('void_transaction',{p_id:t.id,p_reason:'網頁手動作廢'});closeSheet();afterClose('已作廢');SIG='';await load();}catch(e){showErr(e.message);}
+  }
+};
+$('f_submit').onclick=async()=>{
+  if(busy)return;showErr('');
+  const amount=Number(amt);
+  if(!(amount>0)){showErr('請輸入大於 0 的金額。');return;}
+  busy=true;$('f_submit').disabled=true;
+  try{
+    if(mode==='edit'){
+      const t=editing,args={p_id:t.id};
+      if(amount!==Number(t.amount))args.p_amount=amount;
+      if(t.type==='expense'&&fcat!==(t.category||'其他'))args.p_category=fcat;
+      const m=$('f_merchant').value.trim(),n=$('f_note').value.trim();
+      if(m&&m!==(t.merchant||''))args.p_merchant=m;
+      if(n&&n!==(t.note||''))args.p_note=n;
+      if(Object.keys(args).length===1){closeSheet();afterClose('沒有變更');return;}
+      await rpc('update_transaction',args);closeSheet();afterClose('已修改（舊值有留紀錄）');SIG='';await load();return;
+    }
+    const type=ftype==='transfer'?fsub:ftype;
+    const when=occurredAt();
+    const dups=await rpc('find_possible_duplicates',{p_occurred_at:when,p_amount:amount});
+    if(dups.length){
+      const d=dups[0];
+      const go=await ask(`<b>可能重複</b><br>同一天已經有一筆 ${nt(d.amount)}：${esc(d.merchant||'（沒填店家）')}，${esc(payLabel(d.payment_method))}，${esc(d.source)} 記的。<br>還是要再記一筆嗎？`,'還是要記','不記了');
+      if(!go)return;
+    }
+    if(!idem)idem='web-'+crypto.randomUUID();
+    const args={p_idempotency_key:idem,p_occurred_at:when,p_amount:amount,p_type:type,
+      p_category:type==='expense'?(fcat||'其他'):null,
+      p_merchant:$('f_merchant').value.trim()||null,p_payment_method:fpay||'現金',p_note:$('f_note').value.trim()||null};
+    const r=await rpc('add_transaction',args);
+    idem=null;
+    const rr=Array.isArray(r)?r[0]:r;
+    const inView=D&&rr.period_start===D.period_start;
+    const wasCur=rr.period_start===CUR;
+    if(more){amt='';$('f_merchant').value='';$('f_note').value='';fcat='其他';amtDisplay();syncSheet();}else closeSheet();
+    if(!inView&&wasCur){VIEW=null;}
+    const done='已記下 '+nt(amount)+(inView||wasCur?'':'（這筆屬於 '+rr.period_start.slice(5).replace('-','/')+' 起的那一期）');
+    if(more)flashIn(done);else afterClose(done);
+    SIG='';await load();
+  }catch(e){showErr(e.message);}
+  finally{busy=false;$('f_submit').disabled=false;}
+};
+
+/* ---------- live updates: realtime ping + visibility + 15s poll ---------- */
+let sb=null,ch=null,refT=null;
+function scheduleRefresh(){clearTimeout(refT);refT=setTimeout(()=>load({silent:true}),120);}
+async function startRealtime(){
+  try{
+    await needSupabase();
+    const topic=await rpc('get_realtime_topic',{});
+    if(!topic)return;
+    sb=supabase.createClient(URL_,APIKEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:5}}});
+    ch=sb.channel(topic,{config:{broadcast:{self:false}}})
+      .on('broadcast',{event:'changed'},()=>{window.__pings=(window.__pings||0)+1;scheduleRefresh();})
+      .subscribe(st=>{const on=st==='SUBSCRIBED';$('live').classList.toggle('on',on);window.__rt=st;if(on)scheduleRefresh();});
+  }catch(e){window.__rterr=String(e&&e.message||e);}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleRefresh();});
+window.addEventListener('focus',scheduleRefresh);window.addEventListener('pageshow',scheduleRefresh);window.addEventListener('online',scheduleRefresh);
+setInterval(()=>{if(document.visibilityState==='visible'&&D)load({silent:true});},15000);
+
+/* ---------- PWA bits ---------- */
+function normalizeUrl(){ // keep the token in ?k= too: iOS keeps the query but can drop the #hash when launching from the home screen
+  try{if(KEY_FROM_URL||KEY)history.replaceState(null,'',document.querySelector('base')?'/k/'+encodeURIComponent(KEY)+'/':location.pathname+'?k='+encodeURIComponent(KEY));}catch(e){}
+}
+function maybeHint(){
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(KEY.length>=20&&ios&&!STANDALONE&&!LS.get('kk_hint')){$('a2hs').hidden=false;}
+}
+$('a2hs_ok').onclick=()=>{LS.set('kk_hint','1');$('a2hs').hidden=true;};
+if('serviceWorker' in navigator&&window.isSecureContext){
+  {const had=!!navigator.serviceWorker.controller;let done=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||done)return;done=true;if($('sheet').classList.contains('on'))return;location.reload();});}   // an old worker was replaced: reload once so the page runs under the new one
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{try{r.update().catch(()=>{});}catch(e){}}).catch(()=>{});}
+
+showTab('list');
+$('gate').addEventListener('click',ev=>{
+  if(!ev.target.closest('#paste_go'))return;
+  const t=tokenFrom($('paste_in').value);
+  if(t.length<20){showErr('看不出這是記帳連結，請把整條連結貼上。');return;}
+  KEY=t;LS.set('kk_key',t);showErr('');$('gate').innerHTML='<div class="sk"></div>';firstLoad=true;load();
+});
+if(KEY.length<20){window.__kkReady=true;$('gate').innerHTML=needLinkHtml();}
+else{
+  try{const c=JSON.parse(LS.get('kk_cache')||'null');if(c&&c.k===KEY.slice(0,10)&&c.o&&c.l){CUR=c.cur;D=c.o;TX=c.l;SIG='';render();}}catch(e){}   // paint last known data instantly; the network refresh follows
+  load();
+  setTimeout(()=>{needChart().catch(()=>{});},2500);   // warm the chart library after first paint
+}
+</script></body></html>
