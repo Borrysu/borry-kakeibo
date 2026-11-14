@@ -218,7 +218,49 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .dbtns button:active{opacity:.6}
 .dbtns button#dlg_yes{background:var(--org);color:#fff}
 .dbtns button#dlg_yes.danger{background:var(--exp)}
-@media(min-width:560px){#sheet{bottom:20px;border-radius:18px}}
+@media(min-width:560px){#sheet,#asheet{bottom:20px;border-radius:18px}}
+/* accounts v2 */
+.netcard{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--card);padding:12px 4px;border-bottom:1px solid var(--line);text-align:center;width:100%}
+.netcard>*+*{border-left:1px solid var(--line)}
+.netcard b{display:block;font-size:17px;white-space:nowrap;font-weight:700}
+.netcard span{display:block;font-size:12px;color:var(--mut);margin-top:2px;line-height:1.25;padding:0 2px}
+button.netcard{text-align:center}.netcard>div{padding:0 2px}
+.gbtn{height:30px;padding:0 12px;border-radius:15px;background:var(--org);color:#fff;font-size:13px;font-weight:700}
+.gbtn:active{background:var(--orgd)}
+.acr{align-items:flex-start}
+.acr .ico{margin-top:2px}
+.t2 .w{color:var(--org);font-weight:600}.t2 .g{color:var(--inc)}.t2 .r{color:var(--exp)}
+.tg{display:inline-block;font-size:11px;line-height:1;padding:2px 6px;border-radius:6px;background:var(--grp);color:var(--mut);font-weight:600;margin-left:6px;vertical-align:1px}
+.tg.o{background:rgba(249,155,29,.18);color:var(--org)}
+.hrow{display:flex;justify-content:space-between;gap:10px;padding:8px 16px 8px 68px;background:var(--card);border-top:1px dashed var(--line);font-size:13.5px}
+.hrow .l{min-width:0}.hrow .l b{display:block;font-size:14.5px}.hrow .r2{text-align:right;white-space:nowrap}
+.warnnote{font-size:12.5px;color:var(--org);padding:0 16px 10px 68px;background:var(--card);line-height:1.5;word-break:break-word}
+.tx.pend{opacity:.78}.tx.pend .amt{font-style:italic}
+.tag.pd{background:var(--org)!important}
+.chiprow .rl{flex:none;min-width:34px;text-align:center;font-size:12px;color:var(--mut);line-height:1.15}
+#asheet{position:fixed;left:0;right:0;bottom:0;z-index:120;margin:0 auto;max-width:520px;max-height:94vh;display:flex;flex-direction:column;background:var(--bg);border-radius:18px 18px 0 0;transform:translateY(105%);visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility .32s;overflow:hidden}
+@supports(height:1dvh){#asheet{max-height:94dvh}}
+#asheet.on{transform:none;visibility:visible}
+#asheet .sh_head{grid-template-columns:48px 1fr 64px}
+#as_title{grid-column:2;text-align:center;font-weight:700;font-size:18px}
+#asheet .sh_body{padding-bottom:calc(24px + var(--sab))}
+.kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.kinds .cat{min-height:60px}
+.af{display:flex;align-items:center;min-height:50px;background:var(--card);padding:0 14px;border-bottom:1px solid var(--line);gap:10px}
+.af:first-of-type{border-radius:12px 12px 0 0}
+.af label{flex:none;width:92px;font-size:15px;color:var(--mut)}
+.af input{flex:1;min-width:0;min-height:48px;text-align:right;font-size:16px;color:var(--tx)}
+.af input::placeholder{color:var(--mut);opacity:.6}
+.af.sw button.swb{margin-left:auto;width:51px;height:31px;border-radius:16px;background:var(--keyd);position:relative;transition:background .2s}
+.af.sw button.swb::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.af.sw button.swb[aria-pressed=true]{background:var(--inc)}
+.af.sw button.swb[aria-pressed=true]::after{transform:translateX(20px)}
+.af.sw{justify-content:space-between}.af.sw label{width:auto;flex:1;color:var(--tx)}
+.ahint{font-size:12.5px;color:var(--mut);margin:6px 4px 10px;line-height:1.5}
+.abtn{display:block;width:100%;min-height:48px;border-radius:12px;background:var(--card);font-weight:700;margin-top:12px;color:var(--exp)}
+.abtn.n{color:var(--org)}
+.abtn:active{background:var(--press)}
+
 </style></head><body>
 <div id="err" role="alert"></div><div id="msg" role="status"></div>
 <div id="shell">
@@ -238,6 +280,11 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
     <div id="gate" class="gate"><div class="sk"></div></div>
     <div id="app" hidden>
       <section id="tab_list">
+        <button type="button" class="netcard" id="netcard" data-go="assets" aria-label="看帳戶">
+          <div><b class="num" id="nc_spend">0</b><span>可動用現金</span></div>
+          <div><b class="num" id="nc_net">0</b><span>淨資產（含投資）</span></div>
+          <div><b class="num" id="nc_net2">0</b><span>淨資產（不含投資）</span></div>
+        </button>
         <div class="sumcard">
           <div class="k">本期支出</div>
           <div class="big num"><small>NT$</small><span id="expense">0</span></div>
@@ -261,9 +308,21 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
         <div class="foot" id="bill_foot">點一下未繳的帳單，就會標成已繳。</div>
       </section>
       <section id="tab_assets" hidden>
-        <div class="assetsum"><div><b class="num" id="as_bal">0</b><span id="as_bal_l">已填帳戶餘額合計</span></div><div><b class="num" id="as_debt" style="color:var(--exp)">0</b><span>負債剩餘</span></div></div>
-        <div class="gh"><span>帳戶清單</span><span>只能看，不能改</span></div><div id="accts"></div>
-        <div class="gh"><span>負債</span></div><div id="debts"></div>
+        <div class="netcard" id="netcard2">
+          <div><b class="num" id="as_spend">0</b><span>可動用現金</span></div>
+          <div><b class="num" id="as_net">0</b><span>淨資產（含投資）</span></div>
+          <div><b class="num" id="as_net2">0</b><span>淨資產（不含投資）</span></div>
+        </div>
+        <div class="netcard" id="netcard3">
+          <div><b class="num" id="as_ast">0</b><span>總資產</span></div>
+          <div><b class="num" id="as_lia" style="color:var(--exp)">0</b><span>負債</span></div>
+          <div><b class="num" id="as_pend">0</b><span>在途／待入帳</span></div>
+        </div>
+        <div id="pendbox"></div>
+        <div class="gh"><span>帳戶（點一下可修改）</span><button type="button" class="gbtn" id="acct_add">＋ 新增帳戶</button></div>
+        <div id="accts"></div>
+        <div id="unk_note"></div>
+        <div class="gh"><span>負債（舊紀錄）</span></div><div id="debts"></div>
       </section>
     </div>
   </main>
@@ -293,14 +352,19 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
         <button type="button" data-v="transfer" class="on"><span class="e">🔁</span><div><b>自己帳戶互轉</b><span>從自己的一個戶頭轉到另一個</span></div></button>
         <button type="button" data-v="reimbursement"><span class="e">🤝</span><div><b>代收代付</b><span>室友房租、弟弟還款</span></div></button>
       </div></div>
+    <div id="f_acct_wrap">
+      <div class="chiprow" id="f_from_row"><span class="rl" id="f_from_l">帳戶</span></div>
+      <div class="chiprow" id="f_to_row" hidden><span class="rl">轉入</span></div>
+      <div class="chiprow" id="f_stream_row" hidden><span class="rl">來源</span></div>
+      <div class="chiprow" id="f_pend_row"><span class="ic">⏳</span><button type="button" class="chip" id="f_pend" aria-pressed="false">待入帳（錢還沒到）</button></div>
+    </div>
     <div id="f_chips_wrap">
       <div class="chiprow"><span class="ic">📅</span>
         <button type="button" class="chip" id="d_today">今天</button><button type="button" class="chip" id="d_yest">昨天</button>
         <label class="chip" id="d_pick"><span id="f_date_txt">選日期</span><input id="f_date" type="date" aria-label="日期"></label></div>
-      <div class="chiprow" id="f_paylist"><span class="ic">💳</span></div>
       <div class="chiprow"><span class="ic">🔁</span><button type="button" class="chip" id="f_more" aria-pressed="false">連續記帳（記完不關閉）</button></div>
     </div>
-    <div class="fields"><input id="f_merchant" placeholder="店家（選填）" autocomplete="off"><input id="f_note" placeholder="備註（選填）" autocomplete="off"></div>
+    <div class="fields"><input id="f_merchant" placeholder="店家（選填）" autocomplete="off"><input id="f_note" placeholder="備註（選填）" autocomplete="off"><input id="f_fee" inputmode="decimal" placeholder="手續費（選填）" autocomplete="off" hidden></div>
     <div class="readonly" id="e_info" hidden></div>
   </div>
   <div class="keypad" id="keypad">
@@ -309,6 +373,39 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
     <button type="button" class="done" id="f_submit">完成</button>
     <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
     <button type="button" data-k="00">00</button><button type="button" data-k="0">0</button><button type="button" data-k=".">.</button>
+  </div>
+</section>
+
+<section id="asheet" role="dialog" aria-modal="true" aria-label="帳戶">
+  <div class="sh_head">
+    <button class="x" id="as_close" type="button" aria-label="關閉">✕</button>
+    <div id="as_title">新增帳戶</div>
+    <button class="vbtn" id="as_save" type="button">儲存</button>
+  </div>
+  <div class="sh_body" id="as_body">
+    <div class="lbl">帳戶類型</div><div class="kinds" id="a_kinds"></div>
+    <div class="af"><label for="a_name">名稱</label><input id="a_name" placeholder="例如：國泰世華" autocomplete="off"></div>
+    <div class="af"><label for="a_icon">圖示</label><input id="a_icon" placeholder="一個表情符號（選填）" autocomplete="off" maxlength="4"></div>
+    <div class="af"><label for="a_cur">幣別</label><input id="a_cur" value="TWD" autocomplete="off" autocapitalize="characters"></div>
+    <div class="af"><label for="a_open" id="a_open_l">初始餘額</label><input id="a_open" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+    <div id="g_card" hidden>
+      <div class="af"><label for="a_limit">額度</label><input id="a_limit" inputmode="numeric" placeholder="選填" autocomplete="off"></div>
+      <div class="af"><label for="a_stmt">結帳日</label><input id="a_stmt" inputmode="numeric" placeholder="每月幾號（選填）" autocomplete="off"></div>
+      <div class="af"><label for="a_due">繳款截止日</label><input id="a_due" inputmode="numeric" placeholder="每月幾號（選填）" autocomplete="off"></div>
+    </div>
+    <div id="g_loan" hidden>
+      <div class="af"><label for="a_cpty">對象</label><input id="a_cpty" placeholder="選填" autocomplete="off"></div>
+      <div class="af"><label for="a_ldue">預計還款日</label><input id="a_ldue" type="date"></div>
+    </div>
+    <div class="af sw"><label>計入資產</label><button type="button" class="swb" id="sw_assets" aria-pressed="true" aria-label="計入資產"></button></div>
+    <div class="af sw"><label>可動用（算進「可動用現金」）</label><button type="button" class="swb" id="sw_spend" aria-pressed="false" aria-label="可動用"></button></div>
+    <div class="af"><label for="a_note">備註</label><input id="a_note" placeholder="選填" autocomplete="off"></div>
+    <div id="g_actual" hidden>
+      <div class="af"><label for="a_actual">銀行實際餘額</label><input id="a_actual" inputmode="decimal" placeholder="照網銀或 App 上的數字填" autocomplete="off"></div>
+      <div class="ahint" id="a_actual_h"></div>
+    </div>
+    <div class="ahint" id="a_hint"></div>
+    <button type="button" class="abtn" id="a_archive" hidden>停用這個帳戶</button>
   </div>
 </section>
 
@@ -340,6 +437,13 @@ const CAT_COLOR={住:'#4b8bf5',吃:'#f99b1d',交通:'#22b8a8',訂閱:'#9b6cf0',�
 const SRC_COLOR=['#4b8bf5','#22b8a8','#9b6cf0','#ef4f78','#43a85f','#7d8aa0'];
 const TYPE_EMOJI={income:'💰',transfer:'🔁',reimbursement:'🤝'};
 const PAYS=['現金','信用卡','LINE Pay','匯款'];
+const KINDS=[['cash','現金','💵'],['bank','銀行','🏦'],['debit','簽帳金融卡','💳'],['credit_card','信用卡','💳'],['e_money','電子貨幣','📱'],['investment','投資理財','📊'],['stock','股票','📈'],['loan_in','借入','🤝'],['loan_out','借出','🤝'],['other','其他','🗂️']];
+const KIND_N=Object.fromEntries(KINDS.map(k=>[k[0],k[1]])),KIND_E=Object.fromEntries(KINDS.map(k=>[k[0],k[2]]));
+const LIAB=['credit_card','loan_in'],INVK=['stock','investment'],SPEND_DEF=['cash','bank','e_money','debit'];
+const STREAMS=['未分類','公司薪資','個人導演案','AI 影片案','nightdesk','教學授權','其他'];
+const sg=n=>n==null?'未填':(Number(n)<0?'−':'')+ntf(Math.abs(Number(n)));
+const ntf=n=>{n=Number(n);return Number.isInteger(n)?Math.round(n).toLocaleString('zh-TW'):n.toLocaleString('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2});};
+const sgp=n=>(Number(n)>0?'+':Number(n)<0?'−':'')+ntf(Math.abs(Number(n)));
 const payLabel=p=>p==='轉帳'?'匯款':(p||'');
 const SRC_TYPE={expense:'支出',income:'收入',transfer:'轉帳',reimbursement:'代收代付'};
 const $=id=>document.getElementById(id);
@@ -363,6 +467,13 @@ function zhErr(m){
   if(/is void and cannot be edited/.test(m))return '這筆已作廢，不能修改。';
   if(/nothing to update/.test(m))return '沒有要改的內容。';
   if(/reason required/.test(m))return '作廢要寫原因。';
+  if(/account .* not found/.test(m))return '找不到這個帳戶，請重新整理後再選一次。';
+  if(/already exists/.test(m))return '已經有同名的帳戶了。';
+  if(/is archived/.test(m))return '這個帳戶已停用，不能再記帳。';
+  if(/from and to account are the same/.test(m))return '轉出和轉入不能是同一個帳戶。';
+  if(/income_stream must/.test(m))return '收入來源不在清單裡。';
+  if(/needs p_account_name/.test(m))return '這張卡費要先指定從哪個帳戶繳。';
+  if(/balance out of range|opening_balance out of range/.test(m))return '金額太大了。';
   if(/Failed to fetch|NetworkError|Load failed/.test(m))return '連不上伺服器，請檢查網路後再試一次。';
   return '發生錯誤：'+m;
 }
@@ -395,7 +506,7 @@ async function load(opt={}){
     if(my!==seq)return;
     if(!CUR&&!VIEW)CUR=o.period_start;
     LS.set('kk_key',KEY);
-    try{LS.set('kk_cache',JSON.stringify({k:KEY.slice(0,10),o,l,cur:CUR}));}catch(e){}
+    try{LS.set('kk_cache',JSON.stringify({v:2,k:KEY.slice(0,10),o,l,cur:CUR}));}catch(e){}
     const sig=JSON.stringify([o,l,VIEW,voidOn]);
     if(sig===SIG&&!firstLoad){return;}
     SIG=sig;D=o;TX=l;render();
@@ -425,9 +536,17 @@ function render(){
   $('gap').textContent=gap>0?'還差 '+nt(gap):'已達標';
   const pct=tgt>0?Math.min(100,inc/tgt*100):0;
   $('pbar').style.width=pct+'%';$('ppct').textContent=(pct>=10||pct===0?Math.round(pct):pct.toFixed(1))+'%';
-  renderList();renderBills();renderAssets();
+  renderNet();renderList();renderBills();renderAssets();
   if(tab==='stats')renderStats();
   if(first){normalizeUrl();maybeHint();startRealtime();}
+}
+function renderNet(){
+  const T=D.totals||{};
+  [['nc_spend','spendable_cash'],['nc_net','net_worth'],['nc_net2','net_worth_excl_investments'],['as_spend','spendable_cash'],['as_net','net_worth'],['as_net2','net_worth_excl_investments'],['as_ast','total_assets'],['as_pend','pending_in']].forEach(([id,k])=>{
+    const el=$(id);if(!el)return;const v=T[k];el.textContent=v==null?'—':sg(v);
+    el.style.color=(k!=='pending_in'&&v!=null&&Number(v)<0)?'var(--exp)':'';
+  });
+  $('as_lia').textContent=T.total_liabilities==null?'—':nt(T.total_liabilities);
 }
 function txView(t){
   const exp=t.type==='expense',cat=t.category||'其他';
@@ -439,20 +558,21 @@ function renderList(){
   TX.forEach(t=>{const k=dayKey(t.occurred_at);if(!(k in idx)){idx[k]=groups.length;groups.push({k,items:[]});}groups[idx[k]].items.push(t);});
   const today=taipeiToday(),yest=addDays(today,-1);
   $('list').innerHTML=groups.map(g=>{
-    let e=0,i=0;g.items.forEach(t=>{if(t.voided_at)return;if(t.type==='expense')e+=Number(t.amount);if(t.type==='income')i+=Number(t.amount);});
+    let e=0,i=0;g.items.forEach(t=>{if(t.voided_at||t.status==='pending')return;if(t.type==='expense')e+=Number(t.amount);if(t.type==='income')i+=Number(t.amount);});
     const wd=new Date(g.k+'T12:00:00Z').toLocaleDateString('zh-TW',{timeZone:'UTC',weekday:'short'});
     const label=g.k===today?'今天':g.k===yest?'昨天':'';
     const md=Number(g.k.slice(5,7))+'/'+Number(g.k.slice(8));
     const tot=[e?`支出:${nt(e)}`:'',i?`收入:${nt(i)}`:''].filter(Boolean).join('　');
     return `<div class="gh"><span><b>${md}</b>${label?label+'　':''}${wd}</span><span class="num">${tot}</span></div><div class="rows">`+g.items.map(t=>{
-      const v=txView(t),isVoid=!!t.voided_at,sign=t.type==='income'?'+':(t.type==='expense'?'−':'');
+      const v=txView(t),isVoid=!!t.voided_at,isPend=t.status==='pending'&&!isVoid,sign=t.type==='income'?'+':(t.type==='expense'?'−':'');
       const bits=[];
       if(t.merchant&&v.exp)bits.push(v.cat);
       bits.push(fmtTime(t.occurred_at));
       if(t.note)bits.push(t.note);
       if(t.edit_count>0)bits.push('已修改'+t.edit_count+'次');
       if(isVoid)bits.push('已作廢：'+(t.void_reason||''));
-      return `<button type="button" class="tx ${isVoid?'void':''}" data-id="${t.id}"><div class="ico">${v.emoji}</div><div class="mid"><div class="ttl">${esc(v.title)}</div><div class="sub"><span class="tag" style="background:${srcColor(t.source)}">${esc(t.source)}</span><span class="t">${esc(bits.join(' | '))}</span></div></div><div class="right"><div class="amt ${esc(t.type)}">${sign}${nt(t.amount)}</div><div class="acct">${esc(payLabel(t.payment_method))}</div></div></button>`;
+      const acl=t.type==='transfer'&&t.to_account_name?esc(t.account_name)+' → '+esc(t.to_account_name):(t.account_name==='未指定'?'<span style="color:var(--org)">未指定帳戶</span>':esc(t.account_name||payLabel(t.payment_method)));
+      return `<button type="button" class="tx ${isVoid?'void':''} ${isPend?'pend':''}" data-id="${t.id}"><div class="ico">${v.emoji}</div><div class="mid"><div class="ttl">${esc(v.title)}</div><div class="sub"><span class="tag" style="background:${srcColor(t.source)}">${esc(t.source)}</span>${isPend?'<span class="tag pd">待入帳</span>':''}<span class="t">${esc(bits.join(' | '))}</span></div></div><div class="right"><div class="amt ${esc(t.type)}">${sign}${nt(t.amount)}</div><div class="acct">${acl}</div></div></button>`;
     }).join('')+`</div>`;
   }).join('');
 }
@@ -491,23 +611,53 @@ function renderBills(){
   const paid=B.filter(b=>b.paid_at),sum=a=>a.reduce((s,b)=>s+Number(b.amount||0),0);
   $('bill_sum').textContent=`已繳 ${paid.length}/${B.length}　還要繳 ${nt(sum(B)-sum(paid))}`;
   $('bills').innerHTML=B.map(b=>{
-    const inner=`<div class="due"><b class="num">${b.due_day}</b><i>號</i></div><div style="flex:1;min-width:0"><div class="t1">${esc(b.name)}</div><div class="t2 num">NT$ ${nt(b.amount)}</div></div>`+
+    const inner=`<div class="due"><b class="num">${b.due_day}</b><i>號</i></div><div style="flex:1;min-width:0"><div class="t1">${esc(b.name)}</div><div class="t2 num">NT$ ${nt(b.amount)}${b.kind==='card_payment'?'・卡費（從'+esc(b.account||'帳戶')+'轉到卡）':''}</div></div>`+
       (b.paid_at?`<span class="pill ok">已繳 ${fmtDay(b.paid_at)}${b.paid_by?'・'+esc(b.paid_by):''}</span>`:`<span class="pill todo">${isCur?'標已繳':'未繳'}</span>`);
     return (b.paid_at||!isCur)?`<div class="cardrow" data-bill="${esc(b.name)}">${inner}</div>`:`<button type="button" class="cardrow" data-bill="${esc(b.name)}">${inner}</button>`;
   }).join('');
 }
+function acctSub(a){
+  const s=[];
+  if(a.kind==='credit_card'){
+    const owed=-Number(a.computed_balance||0);
+    if(a.credit_limit!=null)s.push(`額度 ${nt(a.credit_limit)}・可用 ${sg(Number(a.credit_limit)-owed)}`);
+    const d=[];if(a.statement_day)d.push('結帳 '+a.statement_day+' 號');if(a.due_day)d.push('繳款 '+a.due_day+' 號');if(d.length)s.push(d.join('・'));
+    const ins=(D.installments||[]).filter(i=>i.active&&i.account_name===a.name);
+    if(ins.length){const tot=ins.reduce((x,i)=>x+Number(i.outstanding_amount||0),0);s.push(`未到期分期 ${nt(tot)}${ins.some(i=>!i.verified)?' <span class="w">（未驗證）</span>':''}`);}
+  }
+  if((a.kind==='loan_in'||a.kind==='loan_out')&&(a.counterparty||a.loan_due_date))s.push([a.counterparty,a.loan_due_date?'預計 '+a.loan_due_date.slice(5).replace('-','/')+' 還':''].filter(Boolean).join('・'));
+  if(a.balance!=null){
+    const d=Number(a.diff||0),ab=a.kind==='credit_card'||a.kind==='loan_in'?-Number(a.balance):Number(a.balance);
+    s.push(`銀行實際 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+' 查的）':''}`+(Math.abs(d)>=1?` <span class="w">差 ${sgp(d)}</span>`:' <span class="g">對得上</span>'));
+  }
+  return s;
+}
 function renderAssets(){
-  const A=D.accounts||[],DB=D.debts||[];
-  const known=A.filter(a=>a.balance!=null),unk=A.length-known.length;
-  $('as_bal').textContent=nt(known.reduce((s,a)=>s+Number(a.balance),0));
-  $('as_bal_l').textContent=unk?`已填餘額合計（${unk} 個還沒填）`:'帳戶餘額合計';
-  $('as_debt').textContent=nt(DB.reduce((s,d)=>s+Number(d.remaining||0),0));
-  $('accts').innerHTML=A.length?A.map(a=>{
-    const has=a.balance!=null;
-    return `<div class="grp"><div class="cardrow" style="cursor:default"><div class="ico">🏦</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}</div><div class="t2">${a.balance_as_of?fmtDT(a.balance_as_of)+' 查的':'還沒有餘額資料'}</div></div><div class="amt num" style="${has?'color:var(--inc)':'color:var(--mut);font-size:15px'}">${has?nt(a.balance):'還沒查'}</div></div>${a.note?`<div class="note">${esc(a.note)}</div>`:''}</div>`;}).join(''):emptyBox('🏦','沒有帳戶資料','');
-  $('debts').innerHTML=DB.length?DB.map(d=>{
+  const A=D.accounts||[],DB=D.debts||[],P=D.pending||[],T=D.totals||{};
+  const visible=A.filter(a=>!(a.is_system&&Math.abs(Number(a.computed_balance||0))<0.5));
+  const groups=[];
+  KINDS.forEach(([k,n,e])=>{const items=visible.filter(a=>!a.archived&&!a.is_system&&a.kind===k);if(items.length)groups.push({n,e,items,tot:items.filter(a=>a.counts_in_assets).reduce((s,a)=>s+Number(a.computed_balance||0),0)});});
+  const sys=visible.filter(a=>a.is_system&&!a.archived);if(sys.length)groups.push({n:'待歸戶',e:'❔',items:sys,tot:null});
+  const arc=visible.filter(a=>a.archived);if(arc.length)groups.push({n:'停用',e:'🚫',items:arc,tot:null});
+  const row=a=>{
+    const sub=acctSub(a),tags=[];
+    if(!a.counts_in_assets&&!a.is_system)tags.push('不計入資產');
+    if(!a.spendable&&['cash','bank','debit','e_money'].includes(a.kind))tags.push('不可動用');
+    if(a.archived)tags.push('停用');
+    const bal=Number(a.computed_balance||0),liab=LIAB.includes(a.kind);
+    const hs=(D.holdings||[]).filter(h=>h.account_name===a.name);
+    const hh=hs.map(h=>{const pct=h.cost_total>0&&h.pnl!=null?' ('+(h.pnl>=0?'+':'−')+(Math.abs(h.pnl)/h.cost_total*100).toFixed(1)+'%)':'';
+      return `<div class="hrow"><div class="l"><b>${esc(h.symbol)}${h.name?' '+esc(h.name):''}${h.verified?'':'<span class="tg o">未驗證</span>'}</b><span class="mut">${ntf(h.shares)} 股${h.price_date?'・'+h.price_date.slice(5).replace('-','/')+' 收盤':'・價格日期未知'}</span></div><div class="r2"><div class="num">市值 ${h.market_value==null?'未填':nt(h.market_value)}</div><div class="num mut">成本 ${h.cost_total==null?'未填':nt(h.cost_total)}</div><div class="num" style="color:${h.pnl==null?'var(--mut)':h.pnl>=0?'var(--inc)':'var(--exp)'}">${h.pnl==null?'':'損益 '+sgp(h.pnl)+pct}</div></div></div>`;}).join('');
+    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="color:${bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)'}">${sg(bal)}</div></button>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
+  };
+  $('accts').innerHTML=groups.length?groups.map(g=>`<div class="gh"><span><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)}</span></div>`+g.items.map(row).join('')).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
+  $('pendbox').innerHTML=P.length?`<div class="gh"><span><b>⏳ 在途／待入帳</b>${P.length} 筆</span><span class="num">${sg(P.reduce((s,p)=>s+Number(p.amount),0))}</span></div>`+P.map(p=>`<div class="cardrow" style="cursor:default"><div class="ico">⏳</div><div style="flex:1;min-width:0"><div class="t1">${esc(p.merchant||p.note||SRC_TYPE[p.type])}</div><div class="t2">預計 ${fmtDay(p.occurred_at)}・${p.type==='transfer'?esc(p.account_name)+' → '+esc(p.to_account_name||''):esc(p.account_name)}</div></div><div class="amt num">${nt(p.amount)}</div></div>`).join(''):'';
+  const un=Number(T.unassigned_balance||0);
+  $('unk_note').innerHTML=Math.abs(un)>=1?`<div class="foot">待歸戶的紀錄合計 ${sg(un)}：舊帳或沒指定帳戶的交易，到記帳本點開那一筆，選帳戶就會歸過去。</div>`:'';
+  const hasIns=Number(T.installments_outstanding||0)>0;
+  $('debts').innerHTML=(DB.length?DB.map(d=>{
     const tot=Number(d.principal)||0,rep=Number(d.repaid)||0,p=tot>0?Math.min(100,rep/tot*100):0;
-    return `<div class="cardrow" style="cursor:default"><div class="ico">💸</div><div style="flex:1;min-width:0"><div class="t1">${esc(d.name)}</div><div class="bar3"><i style="width:${p}%"></i></div><div class="t2 num">已還 ${nt(rep)}${tot?' ／ 本金 '+nt(tot):''}</div></div><div class="amt num" style="color:var(--exp)">剩 ${nt(d.remaining)}</div></div>`;}).join(''):emptyBox('🎉','沒有負債','');
+    return `<div class="cardrow" style="cursor:default"><div class="ico">💸</div><div style="flex:1;min-width:0"><div class="t1">${esc(d.name)}</div><div class="bar3"><i style="width:${p}%"></i></div><div class="t2 num">已還 ${nt(rep)}${tot?' ／ 本金 '+nt(tot):''}</div></div><div class="amt num" style="color:var(--exp)">剩 ${nt(d.remaining)}</div></div>`;}).join(''):emptyBox('🎉','沒有舊的負債紀錄',''))+(DB.length?'<div class="foot">這是舊的負債紀錄，沒有算進淨資產；淨資產以上面各帳戶的餘額為準。</div>':'');
 }
 /* ---------- tabs + period nav ---------- */
 const TITLES={list:'記帳本',stats:'統計',bills:'帳單',assets:'帳戶'};
@@ -521,6 +671,7 @@ function showTab(t){
   $('scroll').scrollTop=0;
   if(t==='stats'&&D)renderStats();
 }
+$('netcard').addEventListener('click',()=>showTab('assets'));
 $('tabbar').addEventListener('click',ev=>{const b=ev.target.closest('.tb');if(b)showTab(b.dataset.tab);});
 $('utabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;stab=b.dataset.s;[...$('utabs').children].forEach(x=>x.classList.toggle('on',x===b));$('stat_cat').hidden=stab!=='cat';$('stat_trend').hidden=stab!=='trend';$('scroll').scrollTop=0;if(D)renderStats();});
 $('p_prev').onclick=()=>{if(!D)return;VIEW=addMonths(D.period_start,-1);SIG='';load();};
@@ -529,9 +680,17 @@ $('refresh').onclick=async()=>{SIG='';await load();if($('err').style.display!=='
 $('showvoid').onclick=()=>{voidOn=!voidOn;$('showvoid').setAttribute('aria-pressed',String(voidOn));SIG='';load();};
 
 /* ---------- sheet (add / edit) ---------- */
-let mode='add', editing=null, ftype='expense', fsub='transfer', fcat='其他', fpay='現金', amt='', idem=null, busy=false, more=false;
+let mode='add', editing=null, ftype='expense', fsub='transfer', fcat='其他', facct=null, fto=null, fstream='未分類', fpend=false, amt='', idem=null, busy=false, more=false;
 $('f_cats').innerHTML=CATS.map(c=>`<button type="button" class="cat" data-cat="${esc(c)}"><span class="e">${CAT_EMOJI[c]}</span>${esc(c)}</button>`).join('');
-$('f_paylist').insertAdjacentHTML('beforeend',PAYS.map(p=>`<button type="button" class="chip" data-pay="${esc(p)}">${esc(p)}</button>`).join(''));
+const pickAccts=()=>(D&&D.accounts||[]).filter(a=>!a.archived&&!a.is_system);
+function fillRow(id,label,html){const el=$(id),sl=el.scrollLeft;el.innerHTML='<span class="rl">'+label+'</span>'+html;el.scrollLeft=sl;}
+function renderPickers(t,isTr){
+  const A=pickAccts(),chip=(attr,v,on,txt)=>`<button type="button" class="chip ${on?'on':''}" data-${attr}="${esc(v)}">${txt}</button>`;
+  const ac=(a)=>esc(a.icon||KIND_E[a.kind]||'')+' '+esc(a.name);
+  fillRow('f_from_row',isTr?'轉出':'帳戶',A.map(a=>chip('from',a.name,a.name===facct,ac(a))).join(''));
+  if(isTr)fillRow('f_to_row','轉入',A.map(a=>chip('to',a.name,a.name===fto,ac(a))).join(''));
+  if(t==='income')fillRow('f_stream_row','來源',STREAMS.map(s=>chip('stream',s,s===fstream,esc(s))).join(''));
+}
 function amtDisplay(){
   const el=$('f_amt');
   if(!amt){el.textContent='0';el.classList.add('z');return;}
@@ -557,6 +716,12 @@ function syncSheet(){
   $('sh_title').textContent='編輯'+(editing?'・'+SRC_TYPE[editing.type]:'');
   [...$('f_type').children].forEach(b=>b.classList.toggle('on',b.dataset.v===ftype));
   const t=add?ftype:editing.type, isExp=t==='expense';
+  const isTr=add?(ftype==='transfer'&&fsub==='transfer'):editing.type==='transfer';
+  $('f_to_row').hidden=!isTr;$('f_stream_row').hidden=t!=='income';$('f_fee').hidden=!(add&&isTr);
+  $('f_merchant').placeholder=t==='income'?'客戶／案名（選填）':'店家（選填）';
+  $('f_pend').classList.toggle('on',fpend);$('f_pend').setAttribute('aria-pressed',String(fpend));
+  $('f_pend').textContent=t==='expense'?'待扣款（錢還沒扣）':'待入帳（錢還沒到）';
+  renderPickers(t,isTr);
   $('amtbox').className='amtbox '+(t==='income'?'income':t==='expense'?'expense':'');
   $('f_cat_wrap').hidden=!isExp;
   $('f_sub_wrap').hidden=!(add&&ftype==='transfer');
@@ -564,7 +729,6 @@ function syncSheet(){
   $('e_info').hidden=add;
   [...$('f_cats').children].forEach(b=>b.classList.toggle('on',b.dataset.cat===fcat));
   [...$('f_sub').children].forEach(b=>b.classList.toggle('on',b.dataset.v===fsub));
-  [...$('f_paylist').querySelectorAll('[data-pay]')].forEach(b=>b.classList.toggle('on',b.dataset.pay===fpay));
   const d=$('f_date').value||taipeiToday(),today=taipeiToday(),yest=addDays(today,-1);
   $('d_today').classList.toggle('on',d===today);$('d_yest').classList.toggle('on',d===yest);
   const custom=d!==today&&d!==yest;
@@ -575,25 +739,35 @@ function syncSheet(){
 }
 function openSheet(){clearTimeout(msgT);$('msg').style.display='none';document.body.classList.add('sheet-open');$('scrim').classList.add('on');$('sheet').classList.add('on');$('sheet').style.transform='';$('sheet').setAttribute('aria-label',mode==='add'?'記一筆':'編輯');}
 function afterClose(m){setTimeout(()=>showMsg(m),380);}
-function closeSheet(){document.body.classList.remove('sheet-open');$('sheet').classList.remove('drag');$('sheet').style.transform='';$('scrim').classList.remove('on');$('sheet').classList.remove('on');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();}
+function closeSheet(){if($('asheet').classList.contains('on'))return;document.body.classList.remove('sheet-open');$('sheet').classList.remove('drag');$('sheet').style.transform='';$('scrim').classList.remove('on');$('sheet').classList.remove('on');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();}
 function openAdd(){
-  mode='add';editing=null;ftype='expense';fsub='transfer';fcat='其他';fpay='現金';more=false;amt='';idem=null;busy=false;
-  $('f_date').value=taipeiToday();$('f_merchant').value='';$('f_note').value='';$('f_submit').disabled=false;
+  mode='add';editing=null;ftype='expense';fsub='transfer';fcat='其他';more=false;amt='';idem=null;busy=false;
+  {const A=pickAccts().map(a=>a.name),last=LS.get('kk_acct');facct=A.includes(last)?last:(A.includes('現金')?'現金':(A[0]||null));}
+  fto=null;fstream='未分類';fpend=false;
+  $('f_date').value=taipeiToday();$('f_merchant').value='';$('f_note').value='';$('f_fee').value='';$('f_submit').disabled=false;
   amtDisplay();syncSheet();openSheet();
 }
 function openEdit(t){
   mode='edit';editing=t;ftype=t.type;fcat=t.category||'其他';amt=String(Number(t.amount));busy=false;
+  facct=t.account_name&&t.account_name!=='未指定'?t.account_name:null;fto=t.to_account_name||null;fstream=t.income_stream||'未分類';fpend=t.status==='pending';
   $('f_merchant').value=t.merchant||'';$('f_note').value=t.note||'';$('f_submit').disabled=false;
-  $('e_info').innerHTML=`記錄者：${esc(t.source)}　${fmtDay(t.occurred_at)} ${fmtTime(t.occurred_at)}${t.payment_method?'　'+esc(payLabel(t.payment_method)):''}${t.edit_count>0?'<br>已修改 '+t.edit_count+' 次（每次舊值都有留紀錄）':''}`;
+  $('e_info').innerHTML=`記錄者：${esc(t.source)}　${fmtDay(t.occurred_at)} ${fmtTime(t.occurred_at)}${t.account_name?'　'+esc(t.account_name)+(t.to_account_name?' → '+esc(t.to_account_name):''):''}${t.edit_count>0?'<br>已修改 '+t.edit_count+' 次（每次舊值都有留紀錄）':''}`;
   amtDisplay();syncSheet();openSheet();
 }
 $('fab').onclick=openAdd;
-$('sh_close').onclick=closeSheet;$('scrim').onclick=closeSheet;
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&$('sheet').classList.contains('on')&&!$('dlg').open)closeSheet();});
+$('sh_close').onclick=closeSheet;$('scrim').onclick=()=>{if($('asheet').classList.contains('on'))closeAcct();else closeSheet();};
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!$('dlg').open){if($('asheet').classList.contains('on'))closeAcct();else if($('sheet').classList.contains('on'))closeSheet();}});
 $('f_type').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;ftype=b.dataset.v;syncSheet();});
 $('f_cats').addEventListener('click',ev=>{const b=ev.target.closest('.cat');if(!b)return;fcat=b.dataset.cat;syncSheet();});
 $('f_sub').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;fsub=b.dataset.v;syncSheet();});
-$('f_paylist').addEventListener('click',ev=>{const b=ev.target.closest('[data-pay]');if(!b)return;fpay=b.dataset.pay;syncSheet();});
+$('f_acct_wrap').addEventListener('click',ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  if(b.dataset.from!==undefined)facct=b.dataset.from;
+  else if(b.dataset.to!==undefined)fto=b.dataset.to;
+  else if(b.dataset.stream!==undefined)fstream=b.dataset.stream;
+  else if(b.id==='f_pend')fpend=!fpend;
+  syncSheet();
+});
 $('d_today').onclick=()=>{$('f_date').value=taipeiToday();syncSheet();};
 $('d_yest').onclick=()=>{$('f_date').value=addDays(taipeiToday(),-1);syncSheet();};
 $('f_date').addEventListener('input',()=>{if(!$('f_date').value)$('f_date').value=taipeiToday();syncSheet();});
@@ -616,7 +790,7 @@ $('bills').addEventListener('click',async ev=>{
   const el=ev.target.closest('button[data-bill]');if(!el)return;
   const b=D.bills.find(x=>x.name===el.dataset.bill);if(!b||b.paid_at)return;
   if(await ask(`把「${esc(b.name)}」NT$ ${nt(b.amount)} 標記為本期已繳？`,'已繳')){
-    try{showErr('');await rpc('mark_bill_paid',{p_bill_name:b.name});showMsg('已標記「'+b.name+'」已繳');SIG='';await load();}catch(e){showErr(e.message);}
+    try{showErr('');await rpc('mark_bill_paid',b.kind==='card_payment'&&b.account?{p_bill_name:b.name,p_account_name:b.account}:{p_bill_name:b.name});showMsg('已標記「'+b.name+'」已繳');SIG='';await load();}catch(e){showErr(e.message);}
   }
 });
 function occurredAt(){
@@ -634,6 +808,13 @@ $('f_submit').onclick=async()=>{
   if(busy)return;showErr('');
   const amount=Number(amt);
   if(!(amount>0)){showErr('請輸入大於 0 的金額。');return;}
+  if(mode==='add'){
+    const isTr=ftype==='transfer'&&fsub==='transfer';
+    if(!facct){showErr(isTr?'請選轉出帳戶。':'請選帳戶。');return;}
+    if(isTr&&!fto){showErr('請選轉入帳戶。');return;}
+    if(isTr&&fto===facct){showErr('轉出和轉入不能是同一個帳戶。');return;}
+    const f=$('f_fee').value.trim().replace(/,/g,'');if(isTr&&f&&!(Number(f)>=0)){showErr('手續費要填數字。');return;}
+  }
   busy=true;$('f_submit').disabled=true;
   try{
     if(mode==='edit'){
@@ -643,6 +824,10 @@ $('f_submit').onclick=async()=>{
       const m=$('f_merchant').value.trim(),n=$('f_note').value.trim();
       if(m&&m!==(t.merchant||''))args.p_merchant=m;
       if(n&&n!==(t.note||''))args.p_note=n;
+      if(facct&&facct!==t.account_name)args.p_account_name=facct;
+      if(t.type==='transfer'&&fto&&fto!==t.to_account_name)args.p_to_account_name=fto;
+      if(fpend!==(t.status==='pending'))args.p_status=fpend?'pending':'posted';
+      if(t.type==='income'&&fstream!==(t.income_stream||'未分類'))args.p_income_stream=fstream;
       if(Object.keys(args).length===1){closeSheet();afterClose('沒有變更');return;}
       await rpc('update_transaction',args);closeSheet();afterClose('已修改（舊值有留紀錄）');SIG='';await load();return;
     }
@@ -655,21 +840,112 @@ $('f_submit').onclick=async()=>{
       if(!go)return;
     }
     if(!idem)idem='web-'+crypto.randomUUID();
-    const args={p_idempotency_key:idem,p_occurred_at:when,p_amount:amount,p_type:type,
-      p_category:type==='expense'?(fcat||'其他'):null,
-      p_merchant:$('f_merchant').value.trim()||null,p_payment_method:fpay||'現金',p_note:$('f_note').value.trim()||null};
-    const r=await rpc('add_transaction',args);
-    idem=null;
+    const mer=$('f_merchant').value.trim()||null,note=$('f_note').value.trim()||null,st=fpend?'pending':'posted';
+    let r;
+    if(type==='transfer'){
+      r=await rpc('add_transfer',{p_idempotency_key:idem,p_occurred_at:when,p_amount:amount,p_from_account:facct,p_to_account:fto,p_fee:Number($('f_fee').value.trim().replace(/,/g,''))||0,p_note:note,p_status:st});
+    }else{
+      const args={p_idempotency_key:idem,p_occurred_at:when,p_amount:amount,p_type:type,
+        p_category:type==='expense'?(fcat||'其他'):null,p_merchant:mer,p_payment_method:facct,p_note:note,p_account_name:facct,p_status:st};
+      if(type==='income'){args.p_income_stream=fstream;if(mer)args.p_project=mer;}
+      r=await rpc('add_transaction',args);
+    }
+    idem=null;LS.set('kk_acct',facct);
     const rr=Array.isArray(r)?r[0]:r;
     const inView=D&&rr.period_start===D.period_start;
     const wasCur=rr.period_start===CUR;
-    if(more){amt='';$('f_merchant').value='';$('f_note').value='';fcat='其他';amtDisplay();syncSheet();}else closeSheet();
+    if(more){amt='';$('f_merchant').value='';$('f_note').value='';$('f_fee').value='';fcat='其他';fpend=false;amtDisplay();syncSheet();}else closeSheet();
     if(!inView&&wasCur){VIEW=null;}
     const done='已記下 '+nt(amount)+(inView||wasCur?'':'（這筆屬於 '+rr.period_start.slice(5).replace('-','/')+' 起的那一期）');
     if(more)flashIn(done);else afterClose(done);
     SIG='';await load();
   }catch(e){showErr(e.message);}
   finally{busy=false;$('f_submit').disabled=false;}
+};
+
+
+/* ---------- account sheet (add / edit) ---------- */
+let aMode='add',aEdit=null,akind='bank',aAssets=true,aSpend=true,aBusy=false;
+const numOf=s=>{s=String(s==null?'':s).replace(/,/g,'').trim();if(s==='')return null;const n=Number(s);return Number.isFinite(n)?n:NaN;};
+function syncA(){
+  $('a_kinds').innerHTML=KINDS.map(([k,n,e])=>`<button type="button" class="cat ${k===akind?'on':''}" data-kind="${k}" ${aEdit&&aEdit.is_system?'disabled':''}><span class="e">${e}</span>${n}</button>`).join('');
+  const liab=LIAB.includes(akind);
+  $('a_open_l').textContent=liab?'目前欠款':'初始餘額';
+  $('g_card').hidden=akind!=='credit_card';$('g_loan').hidden=!(akind==='loan_in'||akind==='loan_out');
+  $('sw_assets').setAttribute('aria-pressed',String(aAssets));$('sw_spend').setAttribute('aria-pressed',String(aSpend));
+  $('g_actual').hidden=aMode==='add';
+}
+function openAcct(a){
+  aMode=a?'edit':'add';aEdit=a||null;aBusy=false;
+  akind=a?a.kind:'bank';aAssets=a?!!a.counts_in_assets:true;aSpend=a?!!a.spendable:true;
+  const liab=a&&LIAB.includes(a.kind);
+  $('as_title').textContent=a?'修改帳戶':'新增帳戶';
+  $('a_name').value=a?a.name:'';$('a_name').disabled=!!(a&&a.is_system);
+  $('a_icon').value=a?(a.icon||''):'';$('a_cur').value=a?a.currency||'TWD':'TWD';
+  $('a_open').value=a?(Number(a.opening_balance)===0?'':String(liab?-Number(a.opening_balance):Number(a.opening_balance))):'';
+  $('a_limit').value=a&&a.credit_limit!=null?a.credit_limit:'';$('a_stmt').value=a&&a.statement_day?a.statement_day:'';$('a_due').value=a&&a.due_day?a.due_day:'';
+  $('a_cpty').value=a?a.counterparty||'':'';$('a_ldue').value=a?a.loan_due_date||'':'';
+  $('a_note').value=a?a.note||'':'';
+  $('a_actual').value=a&&a.balance!=null?String(liab?-Number(a.balance):Number(a.balance)):'';
+  $('a_actual_h').textContent=a?`照網銀或 App 上看到的數字填，用來和算出來的餘額（${sg(a.computed_balance)}）對帳，差額會顯示在帳戶清單。`:'';
+  $('a_hint').textContent=a?`初始餘額是 ${fmtDay(a.opening_date)} 開的帳，之後的收支和轉帳會自動加減；改初始餘額會連帶改現在的餘額。${LIAB.includes(a.kind)?'信用卡和借入填欠多少，會自動記成負債。':''}`:'開好帳戶後，記帳時就能選它。信用卡和借入的「目前欠款」填欠多少，會自動記成負債。';
+  $('a_archive').hidden=!a||a.is_system;$('a_archive').textContent=a&&a.archived?'重新啟用這個帳戶':'停用這個帳戶';$('a_archive').className='abtn'+(a&&a.archived?' n':'');
+  syncA();
+  document.body.classList.add('sheet-open');$('scrim').classList.add('on');$('asheet').classList.add('on');document.querySelector('#asheet .sh_body').scrollTop=0;
+}
+function closeAcct(){document.body.classList.remove('sheet-open');$('asheet').classList.remove('on');if($('sheet').classList.contains('on'))return;$('scrim').classList.remove('on');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();}
+$('as_close').onclick=closeAcct;
+$('acct_add').onclick=()=>openAcct(null);
+$('accts').addEventListener('click',ev=>{const b=ev.target.closest('[data-aid]');if(!b)return;const a=(D.accounts||[]).find(x=>x.id===Number(b.dataset.aid));if(a)openAcct(a);});
+$('a_kinds').addEventListener('click',ev=>{const b=ev.target.closest('button[data-kind]');if(!b||b.disabled)return;akind=b.dataset.kind;if(aMode==='add')aSpend=SPEND_DEF.includes(akind);syncA();});
+$('sw_assets').onclick=()=>{aAssets=!aAssets;syncA();};$('sw_spend').onclick=()=>{aSpend=!aSpend;syncA();};
+$('as_save').onclick=async()=>{
+  if(aBusy)return;showErr('');
+  const liab=LIAB.includes(akind),name=$('a_name').value.trim();
+  let open=numOf($('a_open').value);if(Number.isNaN(open)){showErr('餘額要填數字。');return;}
+  if(open!=null&&liab)open=-Math.abs(open);
+  const lim=numOf($('a_limit').value),st=numOf($('a_stmt').value),du=numOf($('a_due').value);
+  if([lim,st,du].some(Number.isNaN)){showErr('額度和日期要填數字。');return;}
+  if((st!=null&&(st<1||st>31))||(du!=null&&(du<1||du>31))){showErr('結帳日和繳款日要是 1 到 31。');return;}
+  if(!name){showErr('請填帳戶名稱。');return;}
+  const cur=($('a_cur').value.trim()||'TWD').toUpperCase(),icon=$('a_icon').value.trim(),note=$('a_note').value.trim(),cp=$('a_cpty').value.trim(),ld=$('a_ldue').value;
+  aBusy=true;$('as_save').disabled=true;
+  try{
+    if(aMode==='add'){
+      const args={p_name:name,p_kind:akind,p_opening_balance:open==null?0:open,p_currency:cur,p_counts_in_assets:aAssets,p_spendable:aSpend};
+      if(icon)args.p_icon=icon;if(note)args.p_note=note;
+      if(akind==='credit_card'){if(lim!=null)args.p_credit_limit=lim;if(st!=null)args.p_statement_day=st;if(du!=null)args.p_due_day=du;}
+      if(akind==='loan_in'||akind==='loan_out'){if(cp)args.p_counterparty=cp;if(ld)args.p_loan_due_date=ld;}
+      await rpc('create_account',args);closeAcct();showMsg('已新增帳戶「'+name+'」');SIG='';await load();return;
+    }
+    const a=aEdit,args={p_account_name:a.name};
+    if(name!==a.name)args.p_new_name=name;
+    if(akind!==a.kind)args.p_kind=akind;
+    if(open!=null&&open!==Number(a.opening_balance))args.p_opening_balance=open;
+    if(open==null&&Number(a.opening_balance)!==0)args.p_opening_balance=0;
+    if(cur!==a.currency)args.p_currency=cur;
+    if(aAssets!==!!a.counts_in_assets)args.p_counts_in_assets=aAssets;
+    if(aSpend!==!!a.spendable)args.p_spendable=aSpend;
+    if(icon!==(a.icon||''))args.p_icon=icon;
+    if(note!==(a.note||''))args.p_note=note;
+    if(akind==='credit_card'){if(lim!=null&&lim!==Number(a.credit_limit))args.p_credit_limit=lim;if(st!=null&&st!==a.statement_day)args.p_statement_day=st;if(du!=null&&du!==a.due_day)args.p_due_day=du;}
+    if(akind==='loan_in'||akind==='loan_out'){if(cp!==(a.counterparty||''))args.p_counterparty=cp;if(ld&&ld!==a.loan_due_date)args.p_loan_due_date=ld;}
+    let act=numOf($('a_actual').value);if(Number.isNaN(act)){showErr('銀行實際餘額要填數字。');return;}
+    if(act!=null&&LIAB.includes(akind))act=-Math.abs(act);
+    const actChanged=act!=null&&act!==(a.balance==null?null:Number(a.balance));
+    const changed=Object.keys(args).length>1;
+    if(!changed&&!actChanged){closeAcct();afterClose('沒有變更');return;}
+    if(changed)await rpc('update_account',args);
+    if(actChanged)await rpc('set_account_balance',{p_account_name:args.p_new_name||a.name,p_balance:act,p_balance_as_of:null});
+    closeAcct();afterClose('已更新「'+name+'」');SIG='';await load();
+  }catch(e){showErr(e.message);}
+  finally{aBusy=false;$('as_save').disabled=false;}
+};
+$('a_archive').onclick=async()=>{
+  const a=aEdit;if(!a)return;const to=!a.archived;
+  if(await ask(to?`停用「${esc(a.name)}」？<br><span class="mut">停用後不能再記帳，也不算進總額。紀錄都留著，之後可以重新啟用。</span>`:`重新啟用「${esc(a.name)}」？`,to?'停用':'啟用','取消',to)){
+    try{showErr('');await rpc('update_account',{p_account_name:a.name,p_archived:to});closeAcct();afterClose(to?'已停用':'已重新啟用');SIG='';await load();}catch(e){showErr(e.message);}
+  }
 };
 
 /* ---------- live updates: realtime ping + visibility + 15s poll ---------- */
@@ -712,7 +988,7 @@ $('gate').addEventListener('click',ev=>{
 });
 if(KEY.length<20){window.__kkReady=true;$('gate').innerHTML=needLinkHtml();}
 else{
-  try{const c=JSON.parse(LS.get('kk_cache')||'null');if(c&&c.k===KEY.slice(0,10)&&c.o&&c.l){CUR=c.cur;D=c.o;TX=c.l;SIG='';render();}}catch(e){}   // paint last known data instantly; the network refresh follows
+  try{const c=JSON.parse(LS.get('kk_cache')||'null');if(c&&c.v===2&&c.k===KEY.slice(0,10)&&c.o&&c.l&&c.o.totals){CUR=c.cur;D=c.o;TX=c.l;SIG='';render();}}catch(e){}   // paint last known data instantly; the network refresh follows
   load();
   setTimeout(()=>{needChart().catch(()=>{});},2500);   // warm the chart library after first paint
 }
