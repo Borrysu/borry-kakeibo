@@ -225,6 +225,9 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .netcard b{display:block;font-size:17px;white-space:nowrap;font-weight:700}
 .netcard span{display:block;font-size:12px;color:var(--mut);margin-top:2px;line-height:1.25;padding:0 2px}
 button.netcard{text-align:center}.netcard>div{padding:0 2px}
+.partial{background:var(--card);color:var(--org);font-size:12.5px;line-height:1.45;padding:0 16px 10px;text-align:center;border-bottom:1px solid var(--line)}
+.partial b{font-weight:700}
+.rec{color:var(--org);font-weight:700}
 .gbtn{height:30px;padding:0 12px;border-radius:15px;background:var(--org);color:#fff;font-size:13px;font-weight:700}
 .gbtn:active{background:var(--orgd)}
 .acr{align-items:flex-start}
@@ -285,6 +288,7 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
           <div><b class="num" id="nc_net">0</b><span>淨資產（含投資）</span></div>
           <div><b class="num" id="nc_net2">0</b><span>淨資產（不含投資）</span></div>
         </button>
+        <div class="partial" id="nc_part" hidden></div>
         <div class="sumcard">
           <div class="k">本期支出</div>
           <div class="big num"><small>NT$</small><span id="expense">0</span></div>
@@ -313,6 +317,7 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
           <div><b class="num" id="as_net">0</b><span>淨資產（含投資）</span></div>
           <div><b class="num" id="as_net2">0</b><span>淨資產（不含投資）</span></div>
         </div>
+        <div class="partial" id="as_part" hidden></div>
         <div class="netcard" id="netcard3">
           <div><b class="num" id="as_ast">0</b><span>總資產</span></div>
           <div><b class="num" id="as_lia" style="color:var(--exp)">0</b><span>負債</span></div>
@@ -506,7 +511,7 @@ async function load(opt={}){
     if(my!==seq)return;
     if(!CUR&&!VIEW)CUR=o.period_start;
     LS.set('kk_key',KEY);
-    try{LS.set('kk_cache',JSON.stringify({v:2,k:KEY.slice(0,10),o,l,cur:CUR}));}catch(e){}
+    try{LS.set('kk_cache',JSON.stringify({v:3,k:KEY.slice(0,10),o,l,cur:CUR}));}catch(e){}
     const sig=JSON.stringify([o,l,VIEW,voidOn]);
     if(sig===SIG&&!firstLoad){return;}
     SIG=sig;D=o;TX=l;render();
@@ -547,6 +552,9 @@ function renderNet(){
     el.style.color=(k!=='pending_in'&&v!=null&&Number(v)<0)?'var(--exp)':'';
   });
   $('as_lia').textContent=T.total_liabilities==null?'—':nt(T.total_liabilities);
+  const U=D.unreconciled||[],n=Number(T.unreconciled_count||U.length||0);
+  const msg=n>0?`還有 <b>${n}</b> 個帳戶待對帳（${U.map(u=>esc(u.name)).join('、')}），上面的數字是部分合計。`:'';
+  ['nc_part','as_part'].forEach(id=>{const el=$(id);el.hidden=!msg;el.innerHTML=msg;});
 }
 function txView(t){
   const exp=t.type==='expense',cat=t.category||'其他';
@@ -618,15 +626,17 @@ function renderBills(){
 }
 function acctSub(a){
   const s=[];
+  if(a.needs_reconcile)s.push(a.holdings_only?'<span class="rec">開帳待對帳</span>：目前只算已列出的持股市值':'<span class="rec">待對帳</span>：還沒有可靠的開帳數字，等 Tal Tal 用網銀對帳');
   if(a.kind==='credit_card'){
     const owed=-Number(a.computed_balance||0);
-    if(a.credit_limit!=null)s.push(`額度 ${nt(a.credit_limit)}・可用 ${sg(Number(a.credit_limit)-owed)}`);
+    if(a.credit_limit!=null&&a.computed_balance!=null)s.push(`額度 ${nt(a.credit_limit)}・可用 ${sg(Number(a.credit_limit)-owed)}`);
     const d=[];if(a.statement_day)d.push('結帳 '+a.statement_day+' 號');if(a.due_day)d.push('繳款 '+a.due_day+' 號');if(d.length)s.push(d.join('・'));
     const ins=(D.installments||[]).filter(i=>i.active&&i.account_name===a.name);
     if(ins.length){const tot=ins.reduce((x,i)=>x+Number(i.outstanding_amount||0),0);s.push(`未到期分期 ${nt(tot)}${ins.some(i=>!i.verified)?' <span class="w">（未驗證）</span>':''}`);}
   }
   if((a.kind==='loan_in'||a.kind==='loan_out')&&(a.counterparty||a.loan_due_date))s.push([a.counterparty,a.loan_due_date?'預計 '+a.loan_due_date.slice(5).replace('-','/')+' 還':''].filter(Boolean).join('・'));
-  if(a.balance!=null){
+  if(a.balance!=null&&a.diff==null)s.push(`最近查到 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+'）':''}，尚未核實`);
+  if(a.balance!=null&&a.diff!=null){
     const d=Number(a.diff||0),ab=a.kind==='credit_card'||a.kind==='loan_in'?-Number(a.balance):Number(a.balance);
     s.push(`銀行實際 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+' 查的）':''}`+(Math.abs(d)>=1?` <span class="w">差 ${sgp(d)}</span>`:' <span class="g">對得上</span>'));
   }
@@ -636,7 +646,7 @@ function renderAssets(){
   const A=D.accounts||[],DB=D.debts||[],P=D.pending||[],T=D.totals||{};
   const visible=A.filter(a=>!(a.is_system&&Math.abs(Number(a.computed_balance||0))<0.5));
   const groups=[];
-  KINDS.forEach(([k,n,e])=>{const items=visible.filter(a=>!a.archived&&!a.is_system&&a.kind===k);if(items.length)groups.push({n,e,items,tot:items.filter(a=>a.counts_in_assets).reduce((s,a)=>s+Number(a.computed_balance||0),0)});});
+  KINDS.forEach(([k,n,e])=>{const items=visible.filter(a=>!a.archived&&!a.is_system&&a.kind===k);if(items.length)groups.push({n,e,items,tot:items.filter(a=>a.counts_in_assets&&a.computed_balance!=null).reduce((s,a)=>s+Number(a.computed_balance),0),part:items.some(a=>a.computed_balance==null||a.holdings_only)});});
   const sys=visible.filter(a=>a.is_system&&!a.archived);if(sys.length)groups.push({n:'待歸戶',e:'❔',items:sys,tot:null});
   const arc=visible.filter(a=>a.archived);if(arc.length)groups.push({n:'停用',e:'🚫',items:arc,tot:null});
   const row=a=>{
@@ -644,13 +654,14 @@ function renderAssets(){
     if(!a.counts_in_assets&&!a.is_system)tags.push('不計入資產');
     if(!a.spendable&&['cash','bank','debit','e_money'].includes(a.kind))tags.push('不可動用');
     if(a.archived)tags.push('停用');
-    const bal=Number(a.computed_balance||0),liab=LIAB.includes(a.kind);
+    const nul=a.computed_balance==null,bal=Number(a.computed_balance||0),liab=LIAB.includes(a.kind);
+    if(a.needs_reconcile)tags.unshift('待對帳');
     const hs=(D.holdings||[]).filter(h=>h.account_name===a.name);
     const hh=hs.map(h=>{const pct=h.cost_total>0&&h.pnl!=null?' ('+(h.pnl>=0?'+':'−')+(Math.abs(h.pnl)/h.cost_total*100).toFixed(1)+'%)':'';
       return `<div class="hrow"><div class="l"><b>${esc(h.symbol)}${h.name?' '+esc(h.name):''}${h.verified?'':'<span class="tg o">未驗證</span>'}</b><span class="mut">${ntf(h.shares)} 股${h.price_date?'・'+h.price_date.slice(5).replace('-','/')+' 收盤':'・價格日期未知'}</span></div><div class="r2"><div class="num">市值 ${h.market_value==null?'未填':nt(h.market_value)}</div><div class="num mut">成本 ${h.cost_total==null?'未填':nt(h.cost_total)}</div><div class="num" style="color:${h.pnl==null?'var(--mut)':h.pnl>=0?'var(--inc)':'var(--exp)'}">${h.pnl==null?'':'損益 '+sgp(h.pnl)+pct}</div></div></div>`;}).join('');
-    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="color:${bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)'}">${sg(bal)}</div></button>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
+    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="${nul?'color:var(--org);font-size:15px':'color:'+(bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)')}">${nul?(a.archived?'—':'待對帳'):sg(bal)}</div></button>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
   };
-  $('accts').innerHTML=groups.length?groups.map(g=>`<div class="gh"><span><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)}</span></div>`+g.items.map(row).join('')).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
+  $('accts').innerHTML=groups.length?groups.map(g=>`<div class="gh"><span><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)+(g.part?'（部分）':'')}</span></div>`+g.items.map(row).join('')).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
   $('pendbox').innerHTML=P.length?`<div class="gh"><span><b>⏳ 在途／待入帳</b>${P.length} 筆</span><span class="num">${sg(P.reduce((s,p)=>s+Number(p.amount),0))}</span></div>`+P.map(p=>`<div class="cardrow" style="cursor:default"><div class="ico">⏳</div><div style="flex:1;min-width:0"><div class="t1">${esc(p.merchant||p.note||SRC_TYPE[p.type])}</div><div class="t2">預計 ${fmtDay(p.occurred_at)}・${p.type==='transfer'?esc(p.account_name)+' → '+esc(p.to_account_name||''):esc(p.account_name)}</div></div><div class="amt num">${nt(p.amount)}</div></div>`).join(''):'';
   const un=Number(T.unassigned_balance||0);
   $('unk_note').innerHTML=Math.abs(un)>=1?`<div class="foot">待歸戶的紀錄合計 ${sg(un)}：舊帳或沒指定帳戶的交易，到記帳本點開那一筆，選帳戶就會歸過去。</div>`:'';
@@ -870,7 +881,7 @@ const numOf=s=>{s=String(s==null?'':s).replace(/,/g,'').trim();if(s==='')return 
 function syncA(){
   $('a_kinds').innerHTML=KINDS.map(([k,n,e])=>`<button type="button" class="cat ${k===akind?'on':''}" data-kind="${k}" ${aEdit&&aEdit.is_system?'disabled':''}><span class="e">${e}</span>${n}</button>`).join('');
   const liab=LIAB.includes(akind);
-  $('a_open_l').textContent=liab?'目前欠款':'初始餘額';
+  $('a_open_l').textContent=aEdit&&aEdit.opening_balance==null?(liab?'目前欠款（待對帳）':'目前餘額（待對帳）'):(liab?'目前欠款':'初始餘額');
   $('g_card').hidden=akind!=='credit_card';$('g_loan').hidden=!(akind==='loan_in'||akind==='loan_out');
   $('sw_assets').setAttribute('aria-pressed',String(aAssets));$('sw_spend').setAttribute('aria-pressed',String(aSpend));
   $('g_actual').hidden=aMode==='add';
@@ -882,13 +893,13 @@ function openAcct(a){
   $('as_title').textContent=a?'修改帳戶':'新增帳戶';
   $('a_name').value=a?a.name:'';$('a_name').disabled=!!(a&&a.is_system);
   $('a_icon').value=a?(a.icon||''):'';$('a_cur').value=a?a.currency||'TWD':'TWD';
-  $('a_open').value=a?(Number(a.opening_balance)===0?'':String(liab?-Number(a.opening_balance):Number(a.opening_balance))):'';
+  $('a_open').value=a&&a.opening_balance!=null?String(liab?-Number(a.opening_balance):Number(a.opening_balance)):'';
   $('a_limit').value=a&&a.credit_limit!=null?a.credit_limit:'';$('a_stmt').value=a&&a.statement_day?a.statement_day:'';$('a_due').value=a&&a.due_day?a.due_day:'';
   $('a_cpty').value=a?a.counterparty||'':'';$('a_ldue').value=a?a.loan_due_date||'':'';
   $('a_note').value=a?a.note||'':'';
   $('a_actual').value=a&&a.balance!=null?String(liab?-Number(a.balance):Number(a.balance)):'';
   $('a_actual_h').textContent=a?`照網銀或 App 上看到的數字填，用來和算出來的餘額（${sg(a.computed_balance)}）對帳，差額會顯示在帳戶清單。`:'';
-  $('a_hint').textContent=a?`初始餘額是 ${fmtDay(a.opening_date)} 開的帳，之後的收支和轉帳會自動加減；改初始餘額會連帶改現在的餘額。${LIAB.includes(a.kind)?'信用卡和借入填欠多少，會自動記成負債。':''}`:'開好帳戶後，記帳時就能選它。信用卡和借入的「目前欠款」填欠多少，會自動記成負債。';
+  $('a_hint').textContent=a&&a.opening_balance==null?'這個帳戶還沒有可靠的開帳數字，所以沒算進總額。填上現在的餘額（照網銀或 App 的數字），就會從現在開始往後自動加減。':a?`初始餘額是 ${fmtDay(a.opening_date)} 開的帳，之後的收支和轉帳會自動加減；改初始餘額會連帶改現在的餘額。${LIAB.includes(a.kind)?'信用卡和借入填欠多少，會自動記成負債。':''}`:'開好帳戶後，記帳時就能選它。信用卡和借入的「目前欠款」填欠多少，會自動記成負債。';
   $('a_archive').hidden=!a||a.is_system;$('a_archive').textContent=a&&a.archived?'重新啟用這個帳戶':'停用這個帳戶';$('a_archive').className='abtn'+(a&&a.archived?' n':'');
   syncA();
   document.body.classList.add('sheet-open');$('scrim').classList.add('on');$('asheet').classList.add('on');document.querySelector('#asheet .sh_body').scrollTop=0;
@@ -921,8 +932,8 @@ $('as_save').onclick=async()=>{
     const a=aEdit,args={p_account_name:a.name};
     if(name!==a.name)args.p_new_name=name;
     if(akind!==a.kind)args.p_kind=akind;
-    if(open!=null&&open!==Number(a.opening_balance))args.p_opening_balance=open;
-    if(open==null&&Number(a.opening_balance)!==0)args.p_opening_balance=0;
+    if(open!=null&&(a.opening_balance==null||open!==Number(a.opening_balance))){args.p_opening_balance=open;if(a.opening_balance==null)args.p_opening_date=new Date().toISOString();}
+    if(open==null&&a.opening_balance!=null&&Number(a.opening_balance)!==0)args.p_opening_balance=0;
     if(cur!==a.currency)args.p_currency=cur;
     if(aAssets!==!!a.counts_in_assets)args.p_counts_in_assets=aAssets;
     if(aSpend!==!!a.spendable)args.p_spendable=aSpend;
@@ -988,7 +999,7 @@ $('gate').addEventListener('click',ev=>{
 });
 if(KEY.length<20){window.__kkReady=true;$('gate').innerHTML=needLinkHtml();}
 else{
-  try{const c=JSON.parse(LS.get('kk_cache')||'null');if(c&&c.v===2&&c.k===KEY.slice(0,10)&&c.o&&c.l&&c.o.totals){CUR=c.cur;D=c.o;TX=c.l;SIG='';render();}}catch(e){}   // paint last known data instantly; the network refresh follows
+  try{const c=JSON.parse(LS.get('kk_cache')||'null');if(c&&c.v===3&&c.k===KEY.slice(0,10)&&c.o&&c.l&&c.o.totals&&c.o.unreconciled){CUR=c.cur;D=c.o;TX=c.l;SIG='';render();}}catch(e){}   // paint last known data instantly; the network refresh follows
   load();
   setTimeout(()=>{needChart().catch(()=>{});},2500);   // warm the chart library after first paint
 }
