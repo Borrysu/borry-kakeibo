@@ -220,6 +220,10 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .dbtns button#dlg_yes.danger{background:var(--exp)}
 @media(min-width:560px){#sheet,#asheet{bottom:20px;border-radius:18px}}
 /* accounts v2 */
+.kkr{display:flex;align-items:center;gap:10px;background:var(--card);padding:10px 14px;border-bottom:1px solid var(--line)}
+.kkr button{flex:none;height:36px;padding:0 14px;border-radius:18px;background:var(--org);color:#fff;font-size:14px;font-weight:600}
+.kkr button:active{opacity:.6}.kkr button:disabled{background:var(--line);color:var(--mut);opacity:1}
+.kkr span{font-size:12px;color:var(--mut);line-height:1.3}
 .netcard{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--card);padding:12px 4px;border-bottom:1px solid var(--line);text-align:center;width:100%}
 .netcard>*+*{border-left:1px solid var(--line)}
 .netcard b{display:block;font-size:17px;white-space:nowrap;font-weight:700}
@@ -289,6 +293,7 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
           <div><b class="num" id="nc_net2">0</b><span>淨資產（不含投資）</span></div>
         </button>
         <div class="partial" id="nc_part" hidden></div>
+        <div class="kkr" id="kkr"><button type="button" id="kkr_btn">立即更新</button><span id="kkr_note">叫塔塔核對一輪帳戶餘額與消費紀錄</span></div>
         <div class="sumcard">
           <div class="k">本期支出</div>
           <div class="big num"><small>NT$</small><span id="expense">0</span></div>
@@ -502,7 +507,8 @@ function ask(html,yes='確定',no='取消',danger=false){return new Promise(res=
 /* ---------- data + render ---------- */
 let D=null, TX=[], charts={}, tab='list', stab='cat', CUR=null, VIEW=null, voidOn=false, SIG='', seq=0, firstLoad=true;
 async function load(opt={}){
-  if(KEY.length<20)return;   // no token yet: stay on the paste screen, never fire a doomed request
+  if(KEY.length<20)return;
+  if(!opt.silent&&!load._kkr){load._kkr=1;kkrStatus();}   // no token yet: stay on the paste screen, never fire a doomed request
   const silent=!!opt.silent, my=++seq;
   if(!silent)showErr('');
   try{
@@ -683,6 +689,28 @@ function showTab(t){
   if(t==='stats'&&D)renderStats();
 }
 $('netcard').addEventListener('click',()=>showTab('assets'));
+/* ---------- 立即更新：叫醒塔塔（webhook 金鑰只在後端 kk-refresh） ---------- */
+let kkrT=null,kkrUntil=0,kkrLast=null,kkrMsg='',kkrMsgEnd=false;
+function kkrFmt(t){if(!t)return '';const d=new Date(t);return d.toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});}
+function kkrPaint(stateText){const b=$('kkr_btn'),n=$('kkr_note');if(!b)return;clearTimeout(kkrT);
+  const left=Math.ceil((kkrUntil-Date.now())/1000);
+  if(stateText==='sending'){b.disabled=true;b.textContent='送出中…';return;}
+  if(left>0){b.disabled=true;b.textContent='已送出 '+left+'s';kkrT=setTimeout(()=>kkrPaint(),1000);}
+  else{b.disabled=false;b.textContent='立即更新';}
+  if(stateText&&stateText!=='sending')kkrMsg=stateText;else if(left<=0&&stateText===undefined&&kkrMsgEnd)kkrMsg='';
+  kkrMsgEnd=left>0;
+  n.textContent=kkrMsg?kkrMsg:(kkrLast?'上次叫塔塔：'+kkrFmt(kkrLast)+'，結果會在塔塔聊天回報':'叫塔塔核對一輪帳戶餘額與消費紀錄');}
+async function kkrStatus(){try{const j=await rpc('kk_refresh_status',{});kkrLast=j.last_sent_at;if(j.wait>0)kkrUntil=Date.now()+j.wait*1000;
+  if(!j.configured){$('kkr_btn').disabled=true;$('kkr_note').textContent='還沒接上塔塔的排程，暫時不能用';return;}kkrPaint();}catch(e){}}
+async function kkrGo(){if(KEY.length<20||$('kkr_btn').disabled)return;kkrPaint('sending');
+  let r,j=null;try{r=await fetch(URL_+'/functions/v1/kk-refresh',{method:'POST',headers:{'Content-Type':'application/json','x-kk-key':KEY},body:'{}',cache:'no-store'});j=await r.json().catch(()=>null);}
+  catch(e){kkrPaint('連不上伺服器，請檢查網路後再試一次');return;}
+  if(j&&j.ok){kkrUntil=Date.now()+60000;kkrLast=new Date().toISOString();kkrPaint('已送出，塔塔會在聊天回報核對結果');return;}
+  if(j&&j.reason==='cooldown'){kkrUntil=Date.now()+(j.wait||60)*1000;kkrPaint('剛叫過塔塔，等一下再按');return;}
+  if(j&&j.reason==='not_configured'){$('kkr_btn').disabled=true;$('kkr_note').textContent='還沒接上塔塔的排程，暫時不能用';return;}
+  kkrUntil=0;kkrPaint(j&&j.reason==='webhook_failed'?'塔塔那邊沒接到（'+(j.http||'無回應')+'），稍後再試':'送出失敗，稍後再試');}
+$('kkr_btn').addEventListener('click',kkrGo);
+
 $('tabbar').addEventListener('click',ev=>{const b=ev.target.closest('.tb');if(b)showTab(b.dataset.tab);});
 $('utabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;stab=b.dataset.s;[...$('utabs').children].forEach(x=>x.classList.toggle('on',x===b));$('stat_cat').hidden=stab!=='cat';$('stat_trend').hidden=stab!=='trend';$('scroll').scrollTop=0;if(D)renderStats();});
 $('p_prev').onclick=()=>{if(!D)return;VIEW=addMonths(D.period_start,-1);SIG='';load();};
