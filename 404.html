@@ -1073,6 +1073,17 @@ setInterval(()=>{if(document.visibilityState==='visible'&&D)load({silent:true});
 /* ---------- PWA bits ---------- */
 function normalizeUrl(){ // keep the token in ?k= too: iOS keeps the query but can drop the #hash when launching from the home screen
   try{if(KEY_FROM_URL||KEY)history.replaceState(null,'',document.querySelector('base')?'/k/'+encodeURIComponent(KEY)+'/':location.pathname+'?k='+encodeURIComponent(KEY));}catch(e){}
+  keyManifest();
+}
+// 主畫面圖示跟 Safari 的儲存空間分開：把金鑰放進 manifest 的 start_url，加入主畫面後一點就能用，不用再貼連結
+function keyManifest(){
+  if(KEY.length<20)return;
+  try{const root=new URL('./',location.origin+location.pathname.replace(/\/k\/[^/]+\/?$/,'/'));const abs=u=>new URL(u,root).href;
+    const m={name:'記帳',short_name:'記帳',description:'Borry 的共用記帳本',lang:'zh-Hant',display:'standalone',orientation:'portrait',background_color:'#f2f2f7',theme_color:'#f99b1d',
+      id:root.pathname,scope:root.href,start_url:abs('./?k='+encodeURIComponent(KEY)),
+      icons:[{src:abs('icon-192.png?v=20261116f'),sizes:'192x192',type:'image/png'},{src:abs('icon-512.png?v=20261116f'),sizes:'512x512',type:'image/png'},{src:abs('icon-maskable-512.png?v=20261116f'),sizes:'512x512',type:'image/png',purpose:'maskable'}]};
+    const l=document.querySelector('link[rel=manifest]');if(l)l.href='data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(m));
+  }catch(e){}
 }
 function maybeHint(){
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
