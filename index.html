@@ -2,10 +2,10 @@
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="記帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="塔塔記帳">
 <meta name="theme-color" content="#f99b1d"><meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png?v=20261116f"><link rel="icon" href="favicon-32.png?v=20261116f">
-<title>記帳</title>
+<title>塔塔記帳</title>
 <script>
 /* error overlay + load watchdog: runs first, so a failure is visible instead of a black screen */
 (function(){
@@ -283,7 +283,7 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
   <header id="top">
     <div class="bar">
       <button class="hbtn" id="refresh" type="button" aria-label="重新整理">↻</button>
-      <h1><span id="hdr_title">記帳本</span><i id="live" title="即時連線"></i></h1>
+      <h1><span id="hdr_title">塔塔記帳</span><i id="live" title="即時連線"></i></h1>
       <button class="hbtn" id="showvoid" type="button" aria-pressed="false"><span>顯示作廢</span></button>
     </div>
     <div class="pnav" id="pnav" hidden>
@@ -690,7 +690,7 @@ function renderAssets(){
     return `<div class="cardrow" style="cursor:default"><div class="ico">💸</div><div style="flex:1;min-width:0"><div class="t1">${esc(d.name)}</div><div class="bar3"><i style="width:${p}%"></i></div><div class="t2 num">已還 ${nt(rep)}${tot?' ／ 本金 '+nt(tot):''}</div></div><div class="amt num" style="color:var(--exp)">剩 ${nt(d.remaining)}</div></div>`;}).join(''):emptyBox('🎉','沒有舊的負債紀錄',''))+(DB.length?'<div class="foot">這是舊的負債紀錄，沒有算進淨資產；淨資產以上面各帳戶的餘額為準。</div>':'');
 }
 /* ---------- tabs + period nav ---------- */
-const TITLES={list:'記帳本',stats:'統計',bills:'帳單',assets:'帳戶'};
+const TITLES={list:'塔塔記帳',stats:'統計',bills:'帳單',assets:'帳戶'};
 function showTab(t){
   tab=t;
   ['list','stats','bills','assets'].forEach(x=>{$('tab_'+x).hidden=x!==t;});
@@ -1079,7 +1079,7 @@ function normalizeUrl(){ // keep the token in ?k= too: iOS keeps the query but c
 function keyManifest(){
   if(KEY.length<20)return;
   try{const root=new URL('./',location.origin+location.pathname.replace(/\/k\/[^/]+\/?$/,'/'));const abs=u=>new URL(u,root).href;
-    const m={name:'記帳',short_name:'記帳',description:'Borry 的共用記帳本',lang:'zh-Hant',display:'standalone',orientation:'portrait',background_color:'#f2f2f7',theme_color:'#f99b1d',
+    const m={name:'塔塔記帳',short_name:'塔塔記帳',description:'Borry 的共用記帳本',lang:'zh-Hant',display:'standalone',orientation:'portrait',background_color:'#f2f2f7',theme_color:'#f99b1d',
       id:root.pathname,scope:root.href,start_url:abs('./?k='+encodeURIComponent(KEY)),
       icons:[{src:abs('icon-192.png?v=20261116f'),sizes:'192x192',type:'image/png'},{src:abs('icon-512.png?v=20261116f'),sizes:'512x512',type:'image/png'},{src:abs('icon-maskable-512.png?v=20261116f'),sizes:'512x512',type:'image/png',purpose:'maskable'}]};
     const l=document.querySelector('link[rel=manifest]');if(l)l.href='data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(m));

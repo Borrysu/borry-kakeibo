@@ -1,6 +1,6 @@
 {
-  "name": "記帳",
-  "short_name": "記帳",
+  "name": "塔塔記帳",
+  "short_name": "塔塔記帳",
   "description": "Borry 的共用記帳本",
   "lang": "zh-Hant",
   "display": "standalone",
