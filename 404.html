@@ -229,6 +229,15 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 .netcard b{display:block;font-size:17px;white-space:nowrap;font-weight:700}
 .netcard span{display:block;font-size:12px;color:var(--mut);margin-top:2px;line-height:1.25;padding:0 2px}
 button.netcard{text-align:center}.netcard>div{padding:0 2px}
+.netcard.n2{grid-template-columns:1fr 1fr}#netcard{cursor:pointer}
+.seg{display:inline-flex;margin-top:6px;background:var(--bg);border-radius:10px;padding:2px}
+.netcard .seg button{height:30px;padding:0 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--mut);white-space:nowrap}
+.netcard .seg button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.cia{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);padding:0 16px 8px 68px;font-size:13px;color:var(--mut);min-height:38px}
+.sw{position:relative;width:46px;height:28px;border-radius:14px;background:var(--line);flex:none;transition:background .15s}
+.sw i{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw.on{background:var(--inc)}.sw.on i{transform:translateX(18px)}.sw:disabled{opacity:.5}
+.hrow .l .q{display:block;font-size:12.5px;color:var(--mut);margin-top:2px;line-height:1.4}.hrow .l .q.w{color:var(--org);font-weight:600}
 .partial{background:var(--card);color:var(--org);font-size:12.5px;line-height:1.45;padding:0 16px 10px;text-align:center;border-bottom:1px solid var(--line)}
 .partial b{font-weight:700}
 .rec{color:var(--org);font-weight:700}
@@ -287,11 +296,10 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
     <div id="gate" class="gate"><div class="sk"></div></div>
     <div id="app" hidden>
       <section id="tab_list">
-        <button type="button" class="netcard" id="netcard" data-go="assets" aria-label="看帳戶">
+        <div class="netcard n2" id="netcard" role="button" tabindex="0" data-go="assets" aria-label="看帳戶">
           <div><b class="num" id="nc_spend">0</b><span>可動用現金</span></div>
-          <div><b class="num" id="nc_net">0</b><span>淨資產（含投資）</span></div>
-          <div><b class="num" id="nc_net2">0</b><span>淨資產（不含投資）</span></div>
-        </button>
+          <div><b class="num" id="nc_net">0</b><span>淨資產</span><div class="seg" role="group" aria-label="淨資產要不要含投資"><button type="button" data-inv="1">含投資</button><button type="button" data-inv="0">不含投資</button></div></div>
+        </div>
         <div class="partial" id="nc_part" hidden></div>
         <div class="kkr" id="kkr"><button type="button" id="kkr_btn">立即更新</button><span id="kkr_note">叫塔塔核對一輪帳戶餘額與消費紀錄</span></div>
         <div class="sumcard">
@@ -317,14 +325,13 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
         <div class="foot" id="bill_foot">點一下未繳的帳單，就會標成已繳。</div>
       </section>
       <section id="tab_assets" hidden>
-        <div class="netcard" id="netcard2">
+        <div class="netcard n2" id="netcard2">
           <div><b class="num" id="as_spend">0</b><span>可動用現金</span></div>
-          <div><b class="num" id="as_net">0</b><span>淨資產（含投資）</span></div>
-          <div><b class="num" id="as_net2">0</b><span>淨資產（不含投資）</span></div>
+          <div><b class="num" id="as_net">0</b><span>淨資產</span><div class="seg" role="group" aria-label="淨資產要不要含投資"><button type="button" data-inv="1">含投資</button><button type="button" data-inv="0">不含投資</button></div></div>
         </div>
         <div class="partial" id="as_part" hidden></div>
         <div class="netcard" id="netcard3">
-          <div><b class="num" id="as_ast">0</b><span>總資產</span></div>
+          <div><b class="num" id="as_ast">0</b><span id="as_ast_l">總資產</span></div>
           <div><b class="num" id="as_lia" style="color:var(--exp)">0</b><span>負債</span></div>
           <div><b class="num" id="as_pend">0</b><span>在途／待入帳</span></div>
         </div>
@@ -547,16 +554,20 @@ function render(){
   $('gap').textContent=gap>0?'還差 '+nt(gap):'已達標';
   const pct=tgt>0?Math.min(100,inc/tgt*100):0;
   $('pbar').style.width=pct+'%';$('ppct').textContent=(pct>=10||pct===0?Math.round(pct):pct.toFixed(1))+'%';
-  renderNet();renderList();renderBills();renderAssets();
+  applyLive();renderNet();renderList();renderBills();renderAssets();
   if(tab==='stats')renderStats();
-  if(first){normalizeUrl();maybeHint();startRealtime();}
+  if(first){normalizeUrl();maybeHint();startRealtime();quoteGo(false);}
 }
+function invOn(){return LS.get('kk_inv')!=='0';}
 function renderNet(){
-  const T=D.totals||{};
-  [['nc_spend','spendable_cash'],['nc_net','net_worth'],['nc_net2','net_worth_excl_investments'],['as_spend','spendable_cash'],['as_net','net_worth'],['as_net2','net_worth_excl_investments'],['as_ast','total_assets'],['as_pend','pending_in']].forEach(([id,k])=>{
-    const el=$(id);if(!el)return;const v=T[k];el.textContent=v==null?'—':sg(v);
+  const T=D.totals||{},inv=invOn();
+  const val={spendable_cash:T.spendable_cash,net:inv?T.net_worth:T.net_worth_excl_investments,total_assets:T.total_assets==null?null:(inv?Number(T.total_assets):Number(T.total_assets)-Number(T.investments_value||0)),pending_in:T.pending_in};
+  [['nc_spend','spendable_cash'],['nc_net','net'],['as_spend','spendable_cash'],['as_net','net'],['as_ast','total_assets'],['as_pend','pending_in']].forEach(([id,k])=>{
+    const el=$(id);if(!el)return;const v=val[k];el.textContent=v==null?'—':sg(v);
     el.style.color=(k!=='pending_in'&&v!=null&&Number(v)<0)?'var(--exp)':'';
   });
+  document.querySelectorAll('.seg button').forEach(b=>{const on=(b.dataset.inv==='1')===inv;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
+  $('as_ast_l').textContent=inv?'總資產（含投資）':'總資產（不含投資）';
   $('as_lia').textContent=T.total_liabilities==null?'—':nt(T.total_liabilities);
   const U=D.unreconciled||[],n=Number(T.unreconciled_count||U.length||0);
   const msg=n>0?`還有 <b>${n}</b> 個帳戶待對帳（${U.map(u=>esc(u.name)).join('、')}），上面的數字是部分合計。`:'';
@@ -643,6 +654,7 @@ function acctSub(a){
   if((a.kind==='loan_in'||a.kind==='loan_out')&&(a.counterparty||a.loan_due_date))s.push([a.counterparty,a.loan_due_date?'預計 '+a.loan_due_date.slice(5).replace('-','/')+' 還':''].filter(Boolean).join('・'));
   if(a.balance!=null&&a.diff==null)s.push(`最近查到 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+'）':''}，尚未核實`);
   if(a.balance!=null&&a.diff!=null){
+    if(a._live){s.push(`銀行實際 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+' 查的）':''}・目前改用即時報價計算`);return s;}
     const d=Number(a.diff||0),ab=a.kind==='credit_card'||a.kind==='loan_in'?-Number(a.balance):Number(a.balance);
     s.push(`銀行實際 ${sg(a.balance)}${a.balance_as_of?'（'+fmtDT(a.balance_as_of)+' 查的）':''}`+(Math.abs(d)>=1?` <span class="w">差 ${sgp(d)}</span>`:' <span class="g">對得上</span>'));
   }
@@ -664,8 +676,9 @@ function renderAssets(){
     if(a.needs_reconcile)tags.unshift('待對帳');
     const hs=(D.holdings||[]).filter(h=>h.account_name===a.name);
     const hh=hs.map(h=>{const pct=h.cost_total>0&&h.pnl!=null?' ('+(h.pnl>=0?'+':'−')+(Math.abs(h.pnl)/h.cost_total*100).toFixed(1)+'%)':'';
-      return `<div class="hrow"><div class="l"><b>${esc(h.symbol)}${h.name?' '+esc(h.name):''}${h.verified?'':'<span class="tg o">未驗證</span>'}</b><span class="mut">${ntf(h.shares)} 股${h.price_date?'・'+h.price_date.slice(5).replace('-','/')+' 收盤':'・價格日期未知'}</span></div><div class="r2"><div class="num">市值 ${h.market_value==null?'未填':nt(h.market_value)}</div><div class="num mut">成本 ${h.cost_total==null?'未填':nt(h.cost_total)}</div><div class="num" style="color:${h.pnl==null?'var(--mut)':h.pnl>=0?'var(--inc)':'var(--exp)'}">${h.pnl==null?'':'損益 '+sgp(h.pnl)+pct}</div></div></div>`;}).join('');
-    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="${nul?'color:var(--org);font-size:15px':'color:'+(bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)')}">${nul?(a.archived?'—':'待對帳'):sg(bal)}</div></button>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
+      const lv=h.live,qline=lv&&!lv.fallback?`<span class="q">現價 ${Number(lv.price).toFixed(2)}（${lv.kind==='last'?'成交價':lv.kind==='mid'?'買賣中間價':'昨收'}）・${lv.quote_time?(dayKey(lv.quote_time)===taipeiToday()?'今天 '+fmtDT(lv.quote_time).replace(/^\d+\/\d+\s*/,''):fmtDT(lv.quote_time)+'（休市，最近成交）'):'報價時間未知'}・${esc(lv.source||'')}${lv.stale?'<br>剛剛重抓失敗，先用上一次的報價':''}</span>`:lv&&lv.fallback?'<span class="q w">報價暫時抓不到，顯示上次記錄值</span>':'<span class="q">報價載入中…</span>';
+      return `<div class="hrow"><div class="l"><b>${esc(h.symbol)}${h.name?' '+esc(h.name):''}${h.verified?'':'<span class="tg o">未驗證</span>'}</b><span class="mut">${ntf(h.shares)} 股${lv&&!lv.fallback?'':h.price_date?'・'+h.price_date.slice(5).replace('-','/')+' 收盤':'・價格日期未知'}</span>${qline}</div><div class="r2"><div class="num">市值 ${h.market_value==null?'未填':nt(h.market_value)}</div><div class="num mut">成本 ${h.cost_total==null?'未填':nt(h.cost_total)}</div><div class="num" style="color:${h.pnl==null?'var(--mut)':h.pnl>=0?'var(--inc)':'var(--exp)'}">${h.pnl==null?'':'損益 '+sgp(h.pnl)+pct}</div></div></div>`;}).join('');
+    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="${nul?'color:var(--org);font-size:15px':'color:'+(bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)')}">${nul?(a.archived?'—':'待對帳'):sg(bal)}</div></button><div class="cia"><span>計入資產</span><button type="button" class="sw${a.counts_in_assets?' on':''}" role="switch" aria-checked="${a.counts_in_assets?'true':'false'}" aria-label="${esc(a.name)}計入資產" data-cia="${a.id}"><i></i></button></div>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
   };
   $('accts').innerHTML=groups.length?groups.map(g=>`<div class="gh"><span><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)+(g.part?'（部分）':'')}</span></div>`+g.items.map(row).join('')).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
   $('pendbox').innerHTML=P.length?`<div class="gh"><span><b>⏳ 在途／待入帳</b>${P.length} 筆</span><span class="num">${sg(P.reduce((s,p)=>s+Number(p.amount),0))}</span></div>`+P.map(p=>`<div class="cardrow" style="cursor:default"><div class="ico">⏳</div><div style="flex:1;min-width:0"><div class="t1">${esc(p.merchant||p.note||SRC_TYPE[p.type])}</div><div class="t2">預計 ${fmtDay(p.occurred_at)}・${p.type==='transfer'?esc(p.account_name)+' → '+esc(p.to_account_name||''):esc(p.account_name)}</div></div><div class="amt num">${nt(p.amount)}</div></div>`).join(''):'';
@@ -688,7 +701,59 @@ function showTab(t){
   $('scroll').scrollTop=0;
   if(t==='stats'&&D)renderStats();
 }
-$('netcard').addEventListener('click',()=>showTab('assets'));
+$('netcard').addEventListener('click',ev=>{if(ev.target.closest('.seg'))return;showTab('assets');});
+$('netcard').addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&ev.target===$('netcard')){ev.preventDefault();showTab('assets');}});
+/* ---------- 淨資產要不要含投資（存在這支手機） ---------- */
+document.addEventListener('click',ev=>{const b=ev.target.closest('.seg button');if(!b)return;LS.set('kk_inv',b.dataset.inv);if(D)renderNet();});
+/* ---------- 計不計入資產：每個帳戶一個開關，點了直接生效 ---------- */
+$('accts').addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-cia]');if(!b||b.disabled)return;
+  const a=(D.accounts||[]).find(x=>x.id===Number(b.dataset.cia));if(!a)return;
+  const to=!a.counts_in_assets;b.disabled=true;b.classList.toggle('on',to);b.setAttribute('aria-checked',String(to));showErr('');
+  try{await rpc('update_account',{p_account_name:a.name,p_counts_in_assets:to});showMsg('「'+a.name+'」'+(to?'已計入資產':'已不計入資產'));SIG='';await load();}
+  catch(e){b.classList.toggle('on',!to);b.setAttribute('aria-checked',String(!to));showErr(e.message);}
+  finally{b.disabled=false;}
+});
+/* ---------- ETF 即時報價：面板開啟與按 ↻ 時向 kk-quote 要（證交所公開報價，後端快取 5 分鐘） ---------- */
+let Q=null,quoteBusy=false,quoteAt=0;
+function applyLive(){
+  if(!D)return;
+  if(!D._raw)D._raw={t:{...(D.totals||{})},a:Object.fromEntries((D.accounts||[]).map(a=>[a.id,a.computed_balance])),h:(D.holdings||[]).map(h=>({mv:h.market_value,pnl:h.pnl}))};
+  const R=D._raw;D.totals={...R.t};
+  (D.accounts||[]).forEach(a=>{a.computed_balance=R.a[a.id];delete a._live;});
+  (D.holdings||[]).forEach((h,i)=>{h.market_value=R.h[i].mv;h.pnl=R.h[i].pnl;delete h.live;});
+  if(!Q)return;
+  const delta={};
+  (D.holdings||[]).forEach(h=>{
+    const q=Q.quotes&&Q.quotes.find(x=>x.symbol===h.symbol&&x.account_name===h.account_name);
+    if(!q){if(Q.err)h.live={fallback:true};return;}
+    if(q.fallback){h.live={fallback:true};return;}
+    const old=Number(h.market_value||0),mv=Number(q.market_value);
+    h.market_value=mv;h.pnl=h.cost_total!=null?mv-Number(h.cost_total):null;
+    h.live={price:q.price,kind:q.price_kind,quote_time:q.quote_time,source:q.source,stale:q.stale,bid:q.bid,ask:q.ask};
+    delta[h.account_name]=(delta[h.account_name]||0)+(mv-old);
+  });
+  const T=D.totals;
+  (D.accounts||[]).forEach(a=>{
+    const d=delta[a.name];if(!d||a.computed_balance==null)return;
+    a.computed_balance=Number(a.computed_balance)+d;a._live=true;if(a.archived)return;
+    const asset=!['credit_card','loan_in'].includes(a.kind);
+    if(a.counts_in_assets){T.net_worth=Number(T.net_worth||0)+d;if(['stock','investment'].includes(a.kind))T.investments_value=Number(T.investments_value||0)+d;else T.net_worth_excl_investments=Number(T.net_worth_excl_investments||0)+d;if(asset)T.total_assets=Number(T.total_assets||0)+d;}
+    if(a.spendable&&asset)T.spendable_cash=Number(T.spendable_cash||0)+d;
+  });
+}
+async function quoteGo(force){
+  if(KEY.length<20||quoteBusy)return;quoteBusy=true;
+  try{
+    const r=await fetch(URL_+'/functions/v1/kk-quote',{method:'POST',headers:{'Content-Type':'application/json','x-kk-key':KEY},body:JSON.stringify({force:!!force}),cache:'no-store'});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||!j.ok)throw new Error((j&&j.error)||'HTTP '+r.status);
+    Q={quotes:j.quotes||[],err:false};quoteAt=Date.now();
+  }catch(e){Q=Q&&Q.quotes?{...Q,err:false,stale:true}:{quotes:[],err:true};}
+  finally{quoteBusy=false;}
+  if(D){applyLive();renderNet();renderAssets();}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-quoteAt>300000)quoteGo(false);});
 /* ---------- 立即更新：叫醒塔塔（webhook 金鑰只在後端 kk-refresh） ---------- */
 let kkrT=null,kkrUntil=0,kkrLast=null,kkrMsg='',kkrMsgEnd=false;
 function kkrFmt(t){if(!t)return '';const d=new Date(t);return d.toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});}
@@ -715,7 +780,7 @@ $('tabbar').addEventListener('click',ev=>{const b=ev.target.closest('.tb');if(b)
 $('utabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;stab=b.dataset.s;[...$('utabs').children].forEach(x=>x.classList.toggle('on',x===b));$('stat_cat').hidden=stab!=='cat';$('stat_trend').hidden=stab!=='trend';$('scroll').scrollTop=0;if(D)renderStats();});
 $('p_prev').onclick=()=>{if(!D)return;VIEW=addMonths(D.period_start,-1);SIG='';load();};
 $('p_next').onclick=()=>{if(!D||D.period_start>=CUR)return;const n=addMonths(D.period_start,1);VIEW=n>=CUR?null:n;SIG='';load();};
-$('refresh').onclick=async()=>{SIG='';await load();if($('err').style.display!=='block')showMsg('已更新');};
+$('refresh').onclick=async()=>{SIG='';await Promise.all([load(),quoteGo(true)]);if($('err').style.display!=='block')showMsg('已更新');};
 $('showvoid').onclick=()=>{voidOn=!voidOn;$('showvoid').setAttribute('aria-pressed',String(voidOn));SIG='';load();};
 
 /* ---------- sheet (add / edit) ---------- */
