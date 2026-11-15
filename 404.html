@@ -233,6 +233,27 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
 .seg{display:inline-flex;margin-top:6px;background:var(--bg);border-radius:10px;padding:2px}
 .netcard .seg button{height:30px;padding:0 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--mut);white-space:nowrap}
 .netcard .seg button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.swr{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.rows>.swr:last-child{border-bottom:0}.grp .swr{border-bottom:0}
+.swr>.swc{position:relative;z-index:1;background:var(--card);touch-action:pan-y;will-change:transform}
+.swr .tx,.swr .cardrow{border-bottom:0}
+.swact{position:absolute;top:0;right:0;bottom:0;width:84px;display:flex;visibility:hidden}
+.swr.drag .swact,.swr.open .swact{visibility:visible}
+.swbtn{flex:1;background:var(--exp);color:#fff;font-size:15px;font-weight:700}.swbtn.ok{background:var(--inc)}.swbtn:active{filter:brightness(.88)}
+#undo{width:max-content;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + var(--sab));z-index:400;display:none;align-items:center;gap:12px;max-width:min(92vw,480px);padding:8px 8px 8px 16px;border-radius:14px;background:#1f3d2c;color:#9df0c1;font-size:15px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+#undo button{flex:none;height:34px;padding:0 14px;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-weight:700}
+.gh-t{width:100%;text-align:left;cursor:pointer}.gh-t:active{background:var(--press)}
+.gh-t .car{font-style:normal;display:inline-block;width:1.3em;color:var(--mut);font-size:12px}
+.amore{background:var(--card);padding:0 16px 4px 68px;text-align:left}
+.mbtn{height:26px;font-size:12.5px;color:var(--mut);padding-right:12px}
+.kkr span{flex:1;min-width:0}
+.kkr button.kkm_t{padding:0;width:36px;background:var(--bg);color:var(--tx);font-size:18px}
+.kkm{background:var(--card);padding:0 14px 10px;border-bottom:1px solid var(--line)}
+.kkm .row{display:flex;gap:8px}
+.kkm input{flex:1;min-width:0;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--tx);padding:0 12px;font-size:16px}
+.kkm button{flex:none;height:40px;padding:0 16px;border-radius:12px;background:var(--org);color:#fff;font-weight:700}
+.kkm button:disabled{background:var(--line);color:var(--mut)}
+.kkm .s{font-size:12.5px;color:var(--mut);margin-top:6px;line-height:1.4}.kkm .s.err{color:var(--exp)}.kkm .s.ok{color:var(--inc)}
 .cia{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);padding:0 16px 8px 68px;font-size:13px;color:var(--mut);min-height:38px}
 .sw{position:relative;width:46px;height:28px;border-radius:14px;background:var(--line);flex:none;transition:background .15s}
 .sw i{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
@@ -278,7 +299,7 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
 .abtn:active{background:var(--press)}
 
 </style></head><body>
-<div id="err" role="alert"></div><div id="msg" role="status"></div>
+<div id="err" role="alert"></div><div id="msg" role="status"></div><div id="undo" role="status"><span id="undo_t"></span><button type="button" id="undo_b">復原</button></div>
 <div id="shell">
   <header id="top">
     <div class="bar">
@@ -301,7 +322,8 @@ button.netcard{text-align:center}.netcard>div{padding:0 2px}
           <div><b class="num" id="nc_net">0</b><span>淨資產</span><div class="seg" role="group" aria-label="淨資產要不要含投資"><button type="button" data-inv="1">含投資</button><button type="button" data-inv="0">不含投資</button></div></div>
         </div>
         <div class="partial" id="nc_part" hidden></div>
-        <div class="kkr" id="kkr"><button type="button" id="kkr_btn">立即更新</button><span id="kkr_note">叫塔塔核對一輪帳戶餘額與消費紀錄</span></div>
+        <div class="kkr" id="kkr"><button type="button" id="kkr_btn">立即更新</button><span id="kkr_note">叫塔塔核對一輪帳戶餘額與消費紀錄</span><button type="button" class="kkm_t" id="kkm_t" aria-expanded="false" aria-label="跟塔塔說">💬</button></div>
+        <div class="kkm" id="kkm" hidden><div class="row"><input id="kkm_in" type="text" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="想跟塔塔說什麼？" aria-label="跟塔塔說"><button type="button" id="kkm_send">送出</button></div><div class="s" id="kkm_s" role="status"></div></div>
         <div class="sumcard">
           <div class="k">本期支出</div>
           <div class="big num"><small>NT$</small><span id="expense">0</span></div>
@@ -597,7 +619,8 @@ function renderList(){
       if(t.edit_count>0)bits.push('已修改'+t.edit_count+'次');
       if(isVoid)bits.push('已作廢：'+(t.void_reason||''));
       const acl=t.type==='transfer'&&t.to_account_name?esc(t.account_name)+' → '+esc(t.to_account_name):(t.account_name==='未指定'?'<span style="color:var(--org)">未指定帳戶</span>':esc(t.account_name||payLabel(t.payment_method)));
-      return `<button type="button" class="tx ${isVoid?'void':''} ${isPend?'pend':''}" data-id="${t.id}"><div class="ico">${v.emoji}</div><div class="mid"><div class="ttl">${esc(v.title)}</div><div class="sub"><span class="tag" style="background:${srcColor(t.source)}">${esc(t.source)}</span>${isPend?'<span class="tag pd">待入帳</span>':''}<span class="t">${esc(bits.join(' | '))}</span></div></div><div class="right"><div class="amt ${esc(t.type)}">${sign}${nt(t.amount)}</div><div class="acct">${acl}</div></div></button>`;
+      const swo=isVoid?['','']:[`<div class="swr" data-kind="tx" data-id="${t.id}"><div class="swact"><button type="button" class="swbtn" data-act="del">作廢</button></div><div class="swc">`,'</div></div>'];
+      return swo[0]+`<button type="button" class="tx ${isVoid?'void':''} ${isPend?'pend':''}" data-id="${t.id}"><div class="ico">${v.emoji}</div><div class="mid"><div class="ttl">${esc(v.title)}</div><div class="sub"><span class="tag" style="background:${srcColor(t.source)}">${esc(t.source)}</span>${isPend?'<span class="tag pd">待入帳</span>':''}<span class="t">${esc(bits.join(' | '))}</span></div></div><div class="right"><div class="amt ${esc(t.type)}">${sign}${nt(t.amount)}</div><div class="acct">${acl}</div></div></button>`+swo[1];
     }).join('')+`</div>`;
   }).join('');
 }
@@ -660,13 +683,15 @@ function acctSub(a){
   }
   return s;
 }
+const MORE=new Set();
+const GCM=()=>{try{return JSON.parse(LS.get('kk_acg')||'{}')||{}}catch(e){return {}}};
 function renderAssets(){
   const A=D.accounts||[],DB=D.debts||[],P=D.pending||[],T=D.totals||{};
   const visible=A.filter(a=>!(a.is_system&&Math.abs(Number(a.computed_balance||0))<0.5));
   const groups=[];
-  KINDS.forEach(([k,n,e])=>{const items=visible.filter(a=>!a.archived&&!a.is_system&&a.kind===k);if(items.length)groups.push({n,e,items,tot:items.filter(a=>a.counts_in_assets&&a.computed_balance!=null).reduce((s,a)=>s+Number(a.computed_balance),0),part:items.some(a=>a.computed_balance==null||a.holdings_only)});});
-  const sys=visible.filter(a=>a.is_system&&!a.archived);if(sys.length)groups.push({n:'待歸戶',e:'❔',items:sys,tot:null});
-  const arc=visible.filter(a=>a.archived);if(arc.length)groups.push({n:'停用',e:'🚫',items:arc,tot:null});
+  KINDS.forEach(([k,n,e])=>{const items=visible.filter(a=>!a.archived&&!a.is_system&&a.kind===k);if(items.length)groups.push({key:k,n,e,items,tot:items.filter(a=>a.counts_in_assets&&a.computed_balance!=null).reduce((s,a)=>s+Number(a.computed_balance),0),part:items.some(a=>a.computed_balance==null||a.holdings_only)});});
+  const sys=visible.filter(a=>a.is_system&&!a.archived);if(sys.length)groups.push({key:'sys',n:'待歸戶',e:'❔',items:sys,tot:null});
+  const arc=visible.filter(a=>a.archived);if(arc.length)groups.push({key:'arc',n:'停用',e:'🚫',items:arc,tot:null});
   const row=a=>{
     const sub=acctSub(a),tags=[];
     if(!a.counts_in_assets&&!a.is_system)tags.push('不計入資產');
@@ -678,9 +703,13 @@ function renderAssets(){
     const hh=hs.map(h=>{const pct=h.cost_total>0&&h.pnl!=null?' ('+(h.pnl>=0?'+':'−')+(Math.abs(h.pnl)/h.cost_total*100).toFixed(1)+'%)':'';
       const lv=h.live,qline=lv&&!lv.fallback?`<span class="q">現價 ${Number(lv.price).toFixed(2)}（${lv.kind==='last'?'成交價':lv.kind==='mid'?'買賣中間價':'昨收'}）・${lv.quote_time?(dayKey(lv.quote_time)===taipeiToday()?'今天 '+fmtDT(lv.quote_time).replace(/^\d+\/\d+\s*/,''):fmtDT(lv.quote_time)+'（休市，最近成交）'):'報價時間未知'}・${esc(lv.source||'')}${lv.stale?'<br>剛剛重抓失敗，先用上一次的報價':''}</span>`:lv&&lv.fallback?'<span class="q w">報價暫時抓不到，顯示上次記錄值</span>':'<span class="q">報價載入中…</span>';
       return `<div class="hrow"><div class="l"><b>${esc(h.symbol)}${h.name?' '+esc(h.name):''}${h.verified?'':'<span class="tg o">未驗證</span>'}</b><span class="mut">${ntf(h.shares)} 股${lv&&!lv.fallback?'':h.price_date?'・'+h.price_date.slice(5).replace('-','/')+' 收盤':'・價格日期未知'}</span>${qline}</div><div class="r2"><div class="num">市值 ${h.market_value==null?'未填':nt(h.market_value)}</div><div class="num mut">成本 ${h.cost_total==null?'未填':nt(h.cost_total)}</div><div class="num" style="color:${h.pnl==null?'var(--mut)':h.pnl>=0?'var(--inc)':'var(--exp)'}">${h.pnl==null?'':'損益 '+sgp(h.pnl)+pct}</div></div></div>`;}).join('');
-    return `<div class="grp"><button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="${nul?'color:var(--org);font-size:15px':'color:'+(bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)')}">${nul?(a.archived?'—':'待對帳'):sg(bal)}</div></button><div class="cia"><span>計入資產</span><button type="button" class="sw${a.counts_in_assets?' on':''}" role="switch" aria-checked="${a.counts_in_assets?'true':'false'}" aria-label="${esc(a.name)}計入資產" data-cia="${a.id}"><i></i></button></div>${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
+    const swa=a.is_system?['','']:[`<div class="swr" data-kind="acct" data-id="${a.id}"><div class="swact"><button type="button" class="swbtn${a.archived?' ok':''}" data-act="${a.archived?'ok':'del'}">${a.archived?'啟用':'停用'}</button></div><div class="swc">`,'</div></div>'];
+    const more=MORE.has(a.id);
+    return `<div class="grp">${swa[0]}<button type="button" class="cardrow acr" data-aid="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}${a.suffix?' <span class="mut" style="font-weight:500">'+esc(a.suffix)+'</span>':''}${tags.map(x=>'<span class="tg">'+x+'</span>').join('')}</div>${sub.map(x=>'<div class="t2">'+x+'</div>').join('')}</div><div class="amt num" style="${nul?'color:var(--org);font-size:15px':'color:'+(bal<0?'var(--exp)':liab&&bal===0?'var(--mut)':'var(--tx)')}">${nul?(a.archived?'—':'待對帳'):sg(bal)}</div></button>${swa[1]}<div class="amore"><button type="button" class="mbtn" data-more="${a.id}" aria-expanded="${more}">${more?'收起 ▴':'更多 ▾'}</button></div>${more?`<div class="cia"><span>計入資產</span><button type="button" class="sw${a.counts_in_assets?' on':''}" role="switch" aria-checked="${a.counts_in_assets?'true':'false'}" aria-label="${esc(a.name)}計入資產" data-cia="${a.id}"><i></i></button></div>`:''}${hh}${a.review_note?`<div class="warnnote">⚠ ${esc(a.review_note)}</div>`:''}${more&&a.note&&!/^來源：/.test(a.note)?`<div class="note" style="padding-left:68px">${esc(a.note)}</div>`:''}</div>`;
   };
-  $('accts').innerHTML=groups.length?groups.map(g=>`<div class="gh"><span><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)+(g.part?'（部分）':'')}</span></div>`+g.items.map(row).join('')).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
+  const gcm=GCM();
+  const gcol=g=>g.key in gcm?!!gcm[g.key]:(g.key==='arc'||g.key==='sys'||g.items.every(a=>!a.counts_in_assets)||g.items.every(a=>a.computed_balance!=null&&Math.abs(Number(a.computed_balance))<0.5));
+  $('accts').innerHTML=groups.length?groups.map(g=>{const col=gcol(g);return `<button type="button" class="gh gh-t" data-gk="${g.key}" aria-expanded="${!col}"><span><i class="car">${col?'▸':'▾'}</i><b>${g.e} ${g.n}</b>${g.items.length} 個</span><span class="num">${g.tot==null?'':sg(g.tot)+(g.part?'（部分）':'')}</span></button>`+(col?'':g.items.map(row).join(''));}).join(''):emptyBox('🏦','還沒有帳戶','點上面的「新增帳戶」');
   $('pendbox').innerHTML=P.length?`<div class="gh"><span><b>⏳ 在途／待入帳</b>${P.length} 筆</span><span class="num">${sg(P.reduce((s,p)=>s+Number(p.amount),0))}</span></div>`+P.map(p=>`<div class="cardrow" style="cursor:default"><div class="ico">⏳</div><div style="flex:1;min-width:0"><div class="t1">${esc(p.merchant||p.note||SRC_TYPE[p.type])}</div><div class="t2">預計 ${fmtDay(p.occurred_at)}・${p.type==='transfer'?esc(p.account_name)+' → '+esc(p.to_account_name||''):esc(p.account_name)}</div></div><div class="amt num">${nt(p.amount)}</div></div>`).join(''):'';
   const un=Number(T.unassigned_balance||0);
   $('unk_note').innerHTML=Math.abs(un)>=1?`<div class="foot">待歸戶的紀錄合計 ${sg(un)}：舊帳或沒指定帳戶的交易，到記帳本點開那一筆，選帳戶就會歸過去。</div>`:'';
@@ -692,7 +721,7 @@ function renderAssets(){
 /* ---------- tabs + period nav ---------- */
 const TITLES={list:'塔塔記帳',stats:'統計',bills:'帳單',assets:'帳戶'};
 function showTab(t){
-  tab=t;
+  tab=t;if(typeof swClose==='function')swClose();
   ['list','stats','bills','assets'].forEach(x=>{$('tab_'+x).hidden=x!==t;});
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   $('hdr_title').textContent=TITLES[t];
@@ -703,6 +732,106 @@ function showTab(t){
 }
 $('netcard').addEventListener('click',ev=>{if(ev.target.closest('.seg'))return;showTab('assets');});
 $('netcard').addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&ev.target===$('netcard')){ev.preventDefault();showTab('assets');}});
+/* ---------- 帳戶分組收合、更多 ---------- */
+$('accts').addEventListener('click',ev=>{
+  const g=ev.target.closest('[data-gk]');
+  if(g){const m=GCM(),k=g.dataset.gk;const now=g.getAttribute('aria-expanded')==='true';m[k]=now?1:0;LS.set('kk_acg',JSON.stringify(m));renderAssets();return;}
+  const mb=ev.target.closest('[data-more]');
+  if(mb){const id=Number(mb.dataset.more);if(MORE.has(id))MORE.delete(id);else MORE.add(id);renderAssets();}
+});
+/* ---------- 左滑露出動作鍵（交易：作廢；帳戶：停用／啟用）。作廢與停用都不是真刪 ---------- */
+const SWW=84;let swOpen=null,swS=null,swBlock=0;
+function swSet(r,x,anim){const c=r.querySelector('.swc');c.style.transition=anim?'transform .2s ease':'none';c.style.transform=x?'translateX('+x+'px)':'';if(x<0)r.classList.add('drag');}
+function swClose(r){r=r||swOpen;if(!r)return;r.classList.remove('open');swSet(r,0,true);setTimeout(()=>{if(!r.classList.contains('open'))r.classList.remove('drag');},230);if(swOpen===r)swOpen=null;}
+document.addEventListener('touchstart',ev=>{
+  const t=ev.touches[0],tg=ev.target,r=tg.closest?tg.closest('.swr'):null;
+  if(swOpen&&!document.body.contains(swOpen))swOpen=null;
+  const onAct=!!(tg.closest&&tg.closest('.swact'));
+  if(swOpen&&swOpen!==r&&!onAct){swClose();swBlock=Date.now()+450;}
+  if(!r||onAct||ev.touches.length>1){swS=null;return;}
+  swS={r,x:t.clientX,y:t.clientY,base:swOpen===r?-SWW:0,lock:null,cur:null};
+},{passive:true});
+document.addEventListener('touchmove',ev=>{
+  const s=swS;if(!s)return;const t=ev.touches[0],dx=t.clientX-s.x,dy=t.clientY-s.y;
+  if(!s.lock){
+    if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
+    s.lock=Math.abs(dx)>Math.abs(dy)*1.5?'h':'v';
+    if(s.lock==='v'){if(swOpen)swClose();swS=null;return;}
+  }
+  let x=Math.max(-SWW-30,Math.min(0,s.base+dx));if(x<-SWW)x=-SWW+(x+SWW)/3;
+  s.cur=x;swSet(s.r,x,false);if(ev.cancelable)ev.preventDefault();
+},{passive:false});
+function swEnd(){
+  const s=swS;swS=null;if(!s||s.lock!=='h')return;
+  const x=s.cur==null?s.base:s.cur,open=s.base===0?x<-SWW*0.4:x<-SWW*0.6;
+  swBlock=Date.now()+400;
+  if(open){if(swOpen&&swOpen!==s.r)swClose();swOpen=s.r;s.r.classList.add('open');swSet(s.r,-SWW,true);}
+  else{s.r.classList.remove('open');if(swOpen===s.r)swOpen=null;swSet(s.r,0,true);setTimeout(()=>{if(!s.r.classList.contains('open'))s.r.classList.remove('drag');},230);}
+}
+document.addEventListener('touchend',swEnd);document.addEventListener('touchcancel',swEnd);
+document.addEventListener('click',ev=>{
+  if(ev.target.closest('.swact'))return;
+  if(Date.now()<swBlock){ev.stopPropagation();ev.preventDefault();return;}
+  if(swOpen&&document.body.contains(swOpen)){swClose();ev.stopPropagation();ev.preventDefault();}
+},true);
+$('scroll').addEventListener('scroll',()=>{if(swOpen)swClose();},{passive:true});
+let undoT;
+function showUndo(m,fn){const e=$('undo');$('undo_t').textContent=m;e.style.display='flex';e._fn=fn;clearTimeout(undoT);undoT=setTimeout(()=>{e.style.display='none';},7000);}
+$('undo_b').onclick=async()=>{const e=$('undo'),fn=e._fn;e.style.display='none';clearTimeout(undoT);if(fn)try{showErr('');await fn();}catch(err){showErr(err.message);}};
+document.addEventListener('click',ev=>{const b=ev.target.closest('.swbtn');if(!b)return;const r=b.closest('.swr');swClose(r);swAct(r,b.dataset.act);});
+async function swAct(r,act){
+  const kind=r.dataset.kind,id=Number(r.dataset.id);
+  if(kind==='tx'){
+    const t=TX.find(x=>x.id===id);if(!t||t.voided_at)return;
+    const v=txView(t);
+    const ok=await ask('<b>作廢這筆交易？</b><div class="mut" style="margin-top:6px">'+esc(v.title)+'　'+nt(t.amount)+' 元<br>'+fmtDT(t.occurred_at)+'</div><div class="mut" style="margin-top:8px">不會真的刪除，只是標成作廢，不再計入餘額與統計。之後可在記帳本右上「顯示作廢」找到這一筆。</div>','作廢','取消',true);
+    if(!ok)return;
+    try{showErr('');await rpc('void_transaction',{p_id:id,p_reason:'網頁左滑作廢'});showMsg('已作廢「'+v.title+'」。可在右上「顯示作廢」查看');SIG='';await load();}catch(e){showErr(e.message);}
+    return;
+  }
+  const a=(D.accounts||[]).find(x=>x.id===id);if(!a)return;
+  if(act==='ok'){
+    try{showErr('');await rpc('update_account',{p_account_name:a.name,p_archived:false});showMsg('已啟用「'+a.name+'」');SIG='';await load();}catch(e){showErr(e.message);}
+    return;
+  }
+  const ok=await ask('<b>停用帳戶「'+esc(a.name)+'」？</b><div class="mut" style="margin-top:8px">不會刪除任何資料，這個帳戶的舊交易都還在，只是不再算進總資產，也不出現在記帳選單。之後可在帳戶頁最下面的「停用」群組，左滑按「啟用」找回。</div>','停用','取消',true);
+  if(!ok)return;
+  try{
+    showErr('');const res=await rpc('update_account',{p_account_name:a.name,p_archived:true});SIG='';await load();
+    showUndo('已停用「'+a.name+'」'+(res&&res.warning?'（注意：這個帳戶還有餘額）':''),async()=>{await rpc('update_account',{p_account_name:a.name,p_archived:false});showMsg('已復原「'+a.name+'」');SIG='';await load();});
+  }catch(e){showErr(e.message);}
+}
+/* ---------- 跟塔塔說（只有可寫的金鑰能傳；後端 kk-refresh 代打 webhook） ---------- */
+let kkmId=null,kkmBusy=false;
+const kkmUuid=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('m'+Date.now().toString(36)+Math.random().toString(36).slice(2,12));
+function kkmSay(t,cls){const e=$('kkm_s');e.textContent=t||'';e.className='s'+(cls?' '+cls:'');}
+$('kkm_t').addEventListener('click',()=>{const box=$('kkm'),on=box.hidden;box.hidden=!on;$('kkm_t').setAttribute('aria-expanded',String(on));if(on)setTimeout(()=>$('kkm_in').focus(),30);});
+async function kkmGo(){
+  const inp=$('kkm_in'),btn=$('kkm_send'),text=inp.value.trim();
+  if(kkmBusy||KEY.length<20)return;
+  if(!text){kkmSay('先寫點什麼再送出','err');return;}
+  if(text.length>500){kkmSay('最多 500 字，目前 '+text.length+' 字','err');return;}
+  kkmBusy=true;kkmId=kkmId||kkmUuid();btn.disabled=true;inp.readOnly=true;btn.textContent='送出中…';kkmSay('');
+  let r=null,j=null,net=false;
+  try{
+    const ac=typeof AbortController==='function'?new AbortController():null,to=setTimeout(()=>ac&&ac.abort(),25000);
+    try{r=await fetch(URL_+'/functions/v1/kk-refresh',{method:'POST',headers:{'Content-Type':'application/json','x-kk-key':KEY},body:JSON.stringify({action:'message',text,client_id:kkmId,test:LS.get('kk_testmsg')==='1'}),cache:'no-store',signal:ac?ac.signal:undefined});j=await r.json().catch(()=>null);}
+    finally{clearTimeout(to);}
+  }catch(e){net=true;}
+  kkmBusy=false;btn.disabled=false;inp.readOnly=false;btn.textContent='送出';
+  if(net){kkmSay('連不上伺服器，文字還在，檢查網路後再按送出','err');return;}
+  if(j&&j.ok){inp.value='';kkmId=null;kkmSay('已傳給塔塔，她會在聊天回報','ok');return;}
+  const re=j&&j.reason;
+  if(re==='duplicate'){inp.value='';kkmId=null;kkmSay('這則剛剛已經送出了，塔塔會在聊天回報','ok');return;}
+  if(re==='too_fast'){kkmSay('送太快了，等 3 秒再按送出','err');return;}
+  if(r&&r.status===403){kkmSay('這把金鑰沒有寫入權限，不能傳話','err');return;}
+  if(re==='not_configured'){kkmSay('還沒接上塔塔的排程，暫時不能傳話','err');return;}
+  if(re==='bad_text'){kkmSay('文字要 1 到 500 字','err');return;}
+  if(re==='webhook_failed'){kkmId=null;kkmSay('塔塔那邊沒接到（'+(j.http||'無回應')+'），文字還在，稍後再送','err');return;}
+  kkmId=null;kkmSay('送出失敗，文字還在，稍後再試','err');
+}
+$('kkm_send').addEventListener('click',kkmGo);
+$('kkm_in').addEventListener('keydown',ev=>{if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();kkmGo();}});
 /* ---------- 淨資產要不要含投資（存在這支手機） ---------- */
 document.addEventListener('click',ev=>{const b=ev.target.closest('.seg button');if(!b)return;LS.set('kk_inv',b.dataset.inv);if(D)renderNet();});
 /* ---------- 計不計入資產：每個帳戶一個開關，點了直接生效 ---------- */
