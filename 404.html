@@ -535,6 +535,7 @@ html.tthid .tt_sv,html.tthid .tt_eyes{animation-play-state:paused}
     </div>
     <div class="ahint" id="a_hint"></div>
     <button type="button" class="abtn" id="a_archive" hidden>停用這個帳戶</button>
+    <button type="button" class="abtn" id="a_delete" hidden>刪除這個帳戶</button>
   </div>
 </section>
 
@@ -598,6 +599,8 @@ function zhErr(m){
   if(/reason required/.test(m))return '作廢要寫原因。';
   if(/account .* not found/.test(m))return '找不到這個帳戶，請重新整理後再選一次。';
   if(/already exists/.test(m))return '已經有同名的帳戶了。';
+  if(/has records/.test(m))return '這個帳戶還有紀錄，不能刪除，請改用停用。';
+  if(/cannot be deleted/.test(m))return '系統帳戶不能刪除。';
   if(/is archived/.test(m))return '這個帳戶已停用，不能再記帳。';
   if(/from and to account are the same/.test(m))return '轉出和轉入不能是同一個帳戶。';
   if(/income_stream must/.test(m))return '收入來源不在清單裡。';
@@ -1314,6 +1317,7 @@ function openAcct(a){
   $('a_actual_h').textContent=a?`照網銀或 App 上看到的數字填，用來和算出來的餘額（${sg(a.computed_balance)}）對帳，差額會顯示在帳戶清單。`:'';
   $('a_hint').textContent=a&&a.opening_balance==null?'這個帳戶還沒有可靠的開帳數字，所以沒算進總額。填上現在的餘額（照網銀或 App 的數字），就會從現在開始往後自動加減。':a?`初始餘額是 ${fmtDay(a.opening_date)} 開的帳，之後的收支和轉帳會自動加減；改初始餘額會連帶改現在的餘額。${LIAB.includes(a.kind)?'信用卡和借入填欠多少，會自動記成負債。':''}`:'開好帳戶後，記帳時就能選它。信用卡和借入的「目前欠款」填欠多少，會自動記成負債。';
   $('a_archive').hidden=!a||a.is_system;$('a_archive').textContent=a&&a.archived?'重新啟用這個帳戶':'停用這個帳戶';$('a_archive').className='abtn'+(a&&a.archived?' n':'');
+  $('a_delete').hidden=!a||a.is_system;
   syncA();
   document.body.classList.add('sheet-open');$('scrim').classList.add('on');$('asheet').classList.add('on');document.querySelector('#asheet .sh_body').scrollTop=0;
 }
@@ -1369,6 +1373,13 @@ $('a_archive').onclick=async()=>{
   const a=aEdit;if(!a)return;const to=!a.archived;
   if(await ask(to?`停用「${esc(a.name)}」？<br><span class="mut">停用後不能再記帳，也不算進總額。紀錄都留著，之後可以重新啟用。</span>`:`重新啟用「${esc(a.name)}」？`,to?'停用':'啟用','取消',to)){
     try{showErr('');await rpc('update_account',{p_account_name:a.name,p_archived:to});closeAcct();afterClose(to?'已停用':'已重新啟用');SIG='';await load();}catch(e){showErr(e.message);}
+  }
+};
+
+$('a_delete').onclick=async()=>{
+  const a=aEdit;if(!a||a.is_system)return;
+  if(await ask(`刪除帳戶「${esc(a.name)}」？<br><span class="mut">只有完全沒有交易、分期、帳單、持股、欠款的帳戶能刪。刪了就從清單消失，無法從面板復原。</span>`,'刪除','取消',true)){
+    try{showErr('');await rpc('delete_account',{p_account_name:a.name});closeAcct();closeDetAll();afterClose('已刪除');SIG='';await load();}catch(e){showErr(e.message);}
   }
 };
 
