@@ -368,6 +368,24 @@ html.tthid .tt_sv,html.tthid .tt_eyes{animation-play-state:paused}
 .ttb .s{font-size:12.5px;color:var(--mut);margin:6px 2px 0;line-height:1.4;min-height:1px}.ttb .s:empty{display:none}.ttb .s.err{color:var(--exp)}.ttb .s.ok{color:var(--inc)}
 .ttb_tail{position:absolute;width:16px;height:16px;background:var(--card);transform:rotate(45deg);border-radius:3px}
 .ttb_tail.up{top:-6px}.ttb_tail.dn{bottom:-6px}.ttb_tail.no{display:none}
+
+/* ---- 目標詳細頁 ---- */
+.gl_big{font-size:40px;font-weight:800;letter-spacing:-.5px}
+.gl_bar{height:8px;border-radius:4px;background:var(--grp);margin:12px 24px 4px;overflow:hidden}.gl_bar i{display:block;height:100%;background:var(--org)}
+.gl_line{display:flex;align-items:baseline;gap:10px;background:var(--card);padding:12px 16px;border-top:1px solid var(--line)}
+.gl_line .l{flex:1;min-width:0;font-size:15px}.gl_line .l small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px;line-height:1.4}
+.gl_line .v{flex:none;font-size:20px;font-weight:700;text-align:right}
+.gl_note{font-size:12.5px;color:var(--mut);line-height:1.5;padding:8px 16px 4px}
+.rcv{display:flex;align-items:center;gap:12px;background:var(--card);padding:10px 16px;border-top:1px solid var(--line);min-height:62px}
+.rcv .m{flex:1;min-width:0}.rcv .t{font-weight:600;font-size:16px;overflow-wrap:anywhere}.rcv .s{font-size:12.5px;color:var(--mut);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rcv .a{flex:none;font-weight:700;font-size:17px;text-align:right}
+.chp{display:inline-block;border-radius:8px;padding:1px 7px;font-size:11.5px;font-weight:600;background:var(--grp);color:var(--mut)}.chp.g{background:#e3f6ec;color:var(--inc)}.chp.r{background:#fde7e7;color:var(--exp)}.chp.o{background:#fff1da;color:#b86a00}
+.run2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px 4px}
+.run2>div{background:var(--card);border-radius:14px;padding:12px 10px;text-align:center;border:1px solid var(--line)}
+.run2 b{display:block;font-size:26px;font-weight:800}.run2 span{display:block;font-size:12.5px;color:var(--mut);margin-top:3px;line-height:1.35}
+.glask{display:block;width:calc(100% - 32px);margin:14px 16px 4px;height:50px;border-radius:14px;background:var(--org);color:#fff;font-size:17px;font-weight:700}
+.glask:active{background:var(--orgd)}
+@media(prefers-color-scheme:dark){.chp.g{background:#12351f}.chp.r{background:#3d1b1d}.chp.o{background:#3b2a0c;color:#f6b45a}}
 </style></head><body>
 <div id="err" role="alert"></div><div id="msg" role="status"></div><div id="undo" role="status"><span id="undo_t"></span><button type="button" id="undo_b">復原</button></div>
 <div id="shell">
@@ -398,9 +416,9 @@ html.tthid .tt_sv,html.tthid .tt_eyes{animation-play-state:paused}
           <div class="cols3">
             <div data-det="inc"><b class="num" id="income_w" style="color:var(--inc)"><span id="income">0</span></b><span>收入</span></div>
             <div><b class="num" id="net">0</b><span>結餘</span></div>
-            <div><b class="num" id="gap"></b><span>距離目標</span></div>
+            <div data-det="goal" role="button" tabindex="0" aria-label="目標詳細"><b class="num" id="gap"></b><span>距離目標 ›</span></div>
           </div>
-          <div class="prog"><div class="bar2"><i id="pbar"></i></div><div class="meta"><span>月收入目標 NT$ <span id="target"></span></span><span id="ppct"></span></div></div>
+          <div class="prog" data-det="goal" role="button" tabindex="0" aria-label="目標詳細"><div class="bar2"><i id="pbar"></i></div><div class="meta"><span>月收入目標 NT$ <span id="target"></span></span><span id="ppct"></span></div></div>
         </div>
         <div id="list"></div>
       </section>
@@ -935,6 +953,7 @@ function ttPlace(){
   const b=$('ttb');if(b.hidden||!ttAnch)return;
   const vv=window.visualViewport,vt=vv?vv.offsetTop:0,vl=vv?vv.offsetLeft:0,vh=vv?vv.height:innerHeight,vw=vv?vv.width:innerWidth;
   const w=Math.max(220,Math.min(320,vw-24));b.style.width=w+'px';
+  if(!ttAnch.isConnected){const n=ttAnch.id&&document.getElementById(ttAnch.id);if(n)ttAnch=n;else{ttClose(true);return;}}
   const r=ttAnch.getBoundingClientRect(),bh=b.offsetHeight,cx=r.left+r.width/2;
   const left=Math.min(Math.max(cx-40,vl+12),vl+vw-12-w);
   const below=(r.top+r.height/2)<(vt+vh/2);
@@ -944,9 +963,12 @@ function ttPlace(){
   b.style.left=Math.round(left)+'px';b.style.top=Math.round(top)+'px';
   const t=$('ttb_tail');t.className='ttb_tail '+dir;t.style.left=Math.round(Math.min(Math.max(cx-left,26),w-26)-8)+'px';
 }
-function ttOpen(anch){
+let ttPre=false;
+function ttOpen(anch,opt){
   clearTimeout(ttCloseT);
-  ttAnch=anch;ttCur=anch.id==='tt_fab'?ttCtxNow():null;
+  ttAnch=anch;ttCur=opt?{ctx:opt.ctx,label:opt.label}:(anch.id==='tt_fab'?ttCtxNow():null);
+  if(opt&&opt.text){if($('kkm_in').value!==opt.text){$('kkm_in').value=opt.text;kkmId=null;}}else if(ttPre){$('kkm_in').value='';kkmId=null;}
+  ttPre=!!(opt&&opt.text);
   const cx=$('ttb_ctx');if(ttCur){cx.hidden=false;cx.textContent='關於：'+ttCur.label;}else{cx.hidden=true;cx.textContent='';}
   kkmSay('');$('ttb').hidden=false;anch.setAttribute('aria-expanded','true');
   ttPlace();setTimeout(()=>{if(!$('ttb').hidden){try{$('kkm_in').focus({preventScroll:true});}catch(e){$('kkm_in').focus();}ttPlace();}},40);
@@ -956,10 +978,11 @@ function ttClose(force){
   clearTimeout(ttCloseT);$('ttb').hidden=true;
   ['kkm_t','tt_fab'].forEach(i=>$(i).removeAttribute('aria-expanded'));
   if(document.activeElement&&$('ttb').contains(document.activeElement))document.activeElement.blur();
+  if(ttPre&&!kkmBusy){$('kkm_in').value='';kkmId=null;}ttPre=false;
   ttAnch=null;ttCur=null;
 }
 ['kkm_t','tt_fab'].forEach(id=>$(id).addEventListener('click',()=>{const a=$(id);if(!$('ttb').hidden&&ttAnch===a)ttClose();else ttOpen(a);}));
-document.addEventListener('pointerdown',ev=>{if($('ttb').hidden)return;if($('ttb').contains(ev.target)||ev.target.closest('#kkm_t,#tt_fab'))return;ttClose();},true);
+document.addEventListener('pointerdown',ev=>{if($('ttb').hidden)return;if($('ttb').contains(ev.target)||ev.target.closest('#kkm_t,#tt_fab,#gl_ask'))return;ttClose();},true);
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!$('ttb').hidden)ttClose();});
 if(window.visualViewport){visualViewport.addEventListener('resize',()=>{ttPlace();ttSync();});visualViewport.addEventListener('scroll',ttPlace);}
 addEventListener('resize',()=>{ttPlace();ttSync();});
@@ -1473,7 +1496,7 @@ window.addEventListener('popstate',()=>{if(DET.length){DET.pop();drawDet();}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&DET.length&&!$('dlg').open&&!$('sheet').classList.contains('on')&&!$('asheet').classList.contains('on'))detBack();});
 document.addEventListener('click',ev=>{
   const c=ev.target.closest('[data-det]');if(!c||c.closest('#det')||ev.target.closest('.seg'))return;
-  const k=c.dataset.det;if(k==='exp'||k==='inc')openDet('tx',k);else openDet('comp',k);
+  const k=c.dataset.det;if(k==='exp'||k==='inc')openDet('tx',k);else if(k==='goal')openDet('goal','goal');else openDet('comp',k);
 });
 document.addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&ev.target.dataset&&ev.target.dataset.det){ev.preventDefault();ev.target.click();}});
 $('det_b').addEventListener('click',ev=>{
@@ -1500,7 +1523,7 @@ function effOn(t,a){
   return t.account_name===a.name?m:0;
 }
 const df0=d=>'負債';
-function detModel(d){
+function detModel(d){if(d.t==='goal')return goalModel();
   const A=(D.accounts||[]).filter(a=>!a.archived),T=D.totals||{},inv=invOn();
   const bal=a=>a.computed_balance==null?'待對帳':sg(a.computed_balance);
   const rowA=a=>`<button type="button" class="cardrow" data-dacct="${a.id}"><div class="ico">${esc(a.icon||KIND_E[a.kind]||'🏦')}</div><div style="flex:1;min-width:0"><div class="t1">${esc(a.name)}</div><div class="t2">${kindName(a.kind)}${a.counts_in_assets?'':'・不計入資產'}</div></div><div class="amt num" style="${a.computed_balance==null?'color:var(--org);font-size:15px':'color:'+(Number(a.computed_balance)<0?'var(--exp)':'var(--tx)')}">${bal(a)}</div></button>`;
@@ -1576,7 +1599,90 @@ function drawDet(keep){
   const st=keep?body.scrollTop:0,my=++DETSEQ,m=detModel(d);
   $('det_t').textContent=m.title;body.innerHTML=m.html;body.scrollTop=st;el.classList.add('on');
   if(m.acct)drawAcctExtras(m.acct,my);
+  if(d.t==='goal')drawGoalExtras(my);
 }
+
+/* ---------- 目標詳細頁（缺口、應收、撐幾個月、找外快） ---------- */
+let OPPR={at:0,data:null,err:null};
+async function loadOppr(force){
+  if(!force&&OPPR.data&&Date.now()-OPPR.at<60000)return OPPR;
+  try{const j=await rpc('opp_receivables',{});OPPR={at:Date.now(),data:j,err:null};}
+  catch(e){OPPR={at:0,data:null,err:(e&&e.message)||'載入失敗'};}
+  return OPPR;
+}
+const GL_MIN=5000,GL_PCT=0.1;   // 缺口 ≥ 5,000 元且 ≥ 目標的 10% 才顯示「找外快」
+function goalCalc(){
+  const cur=D.summary||{},tgt=Number(D.target)||0,inc=Number(cur.income)||0,exp=Number(cur.expense)||0;
+  const gap=Math.max(tgt-inc,0),end=D.period_end,start=D.period_start,today=taipeiToday();
+  const inPeriod=today>=start&&today<=end;
+  const left=inPeriod?Math.round((new Date(end+'T00:00:00Z')-new Date(today+'T00:00:00Z'))/864e5)+1:0;
+  const bal=inc-exp;
+  const done=(D.recent_periods||[]).filter(p=>p.period_start<CUR&&Number(p.expense)>0).slice(0,3);
+  const base=done.length?done.reduce((x,p)=>x+Number(p.expense),0)/done.length:exp;
+  const cash=(D.totals||{}).spendable_cash;
+  const min=Math.max(GL_MIN,tgt*GL_PCT);
+  return {tgt,inc,exp,gap,end,start,left,bal,base,baseN:done.length,cash:cash==null?null:Number(cash),
+    perDay:left>0?Math.floor(bal/left):null,perDayT:left>0?Math.floor((tgt-exp)/left):null,
+    ask:left>0&&gap>=min,min};
+}
+function rcvItems(){return ((OPPR.data&&OPPR.data.items)||[]).filter(i=>!i.is_demo);}
+function rcvHtml(c){
+  if(OPPR.err)return '<div class="dmsg">應收清單載入失敗：'+esc(OPPR.err)+'<br><button type="button" class="dbtn n" id="gl_retry" style="margin-top:10px">再試一次</button></div>';
+  if(!OPPR.data)return '<div class="dmsg">載入中…</div>';
+  const items=rcvItems();
+  let out='';
+  if(!items.length){
+    out='<div class="empty" style="min-height:150px"><div class="em">🧾</div><b>目前沒有應收款</b><span>接案進行中或已交件、還沒收到錢的案子，會列在這裡</span></div>';
+  }else{
+    out=items.map(i=>{
+      const nm=esc(i.short_title||i.title||'未命名案子'),out_=i.outstanding_amount==null?null:Number(i.outstanding_amount);
+      const st=i.status==='delivered'?'<span class="chp g">已交件</span>':'<span class="chp">進行中</span>';
+      const dt=i.expected_pay_date?'預計 '+esc(String(i.expected_pay_date).slice(5).replace('-','/'))+' 入帳':'入帳日未定';
+      return `<div class="rcv"><div class="m"><div class="t">${nm}</div><div class="s">${st}${i.signed?'<span class="chp o">已簽約</span>':''}${i.overdue?'<span class="chp r">已逾期</span>':''}<span>${dt}</span></div></div><div class="a">${out_==null?'<span class="mut" style="font-size:14px">金額未定</span>':nt(out_)}</div></div>`;}).join('');
+  }
+  const tot=items.reduce((x,i)=>x+(i.outstanding_amount==null?0:Number(i.outstanding_amount)),0);
+  const conf=items.reduce((x,i)=>x+(i.signed===true&&i.outstanding_amount!=null?Number(i.outstanding_amount):0),0);
+  const unk=items.filter(i=>i.outstanding_amount==null).length;
+  if(items.length)out+=`<div class="gl_line"><div class="l">應收合計<small>確定（已簽約）${nt(conf)} 元${unk?'；另有 '+unk+' 筆金額未定，沒算進去':''}</small></div><div class="v">${nt(tot)}</div></div>`;
+  const m=c.base>0&&c.cash!=null?c.cash/c.base:null,m2=c.base>0&&c.cash!=null?(c.cash+conf)/c.base:null;
+  const f=x=>x==null?'—':(Math.round(x*10)/10).toFixed(1);
+  out+=`<div class="run2"><div><b>${f(m)}</b><span>只算現金<br>撐幾個月</span></div><div><b>${f(m2)}</b><span>現金＋確定應收<br>撐幾個月</span></div></div>`;
+  out+=`<div class="gl_note">算法：現金＝可動用現金 ${c.cash==null?'—':nt(c.cash)} 元；月支出＝${c.baseN?'最近 '+c.baseN+' 個完整週期的平均支出':'本期目前已花的支出（只有這一期的資料，之後會改用完整週期平均）'} ${nt(Math.round(c.base))} 元；確定應收＝已簽約案子的未收金額。撐幾個月＝錢 ÷ 月支出，沒扣信用卡和欠款。</div>`;
+  return out;
+}
+function goalModel(){
+  const c=goalCalc(),pct=c.tgt>0?Math.min(100,c.inc/c.tgt*100):0;
+  const ps=D.period_start,pe=D.period_end,md=x=>Number(x.slice(5,7))+'/'+Number(x.slice(8,10));
+  const gapTxt=c.gap>0?nt(c.gap):'已達標';
+  let a=`<div class="dsum"><div class="dk">${md(ps)} – ${md(pe)} 的收入缺口</div><div class="dv gl_big num"${c.gap>0?' style="color:var(--exp)"':' style="color:var(--inc)"'}>${gapTxt}</div><div class="dm">月收入目標 ${nt(c.tgt)}，目前收入 ${nt(c.inc)}（${Math.round(pct)}%）</div></div><div class="gl_bar"><i style="width:${pct}%"></i></div>`;
+  if(c.left>0){
+    a+=`<div class="gl_line" style="margin-top:12px"><div class="l">到本期末還剩<small>今天到 ${md(pe)}（含今天）</small></div><div class="v">${c.left} 天</div></div>`;
+    a+=`<div class="gl_line"><div class="l">${c.bal>=0?'每天還能花':'已經超支，每天要補'}<small>目前結餘 ${c.bal<0?'−':''}${nt(Math.abs(c.bal))}（收入 ${nt(c.inc)} − 支出 ${nt(c.exp)}）÷ ${c.left} 天</small></div><div class="v"${c.bal<0?' style="color:var(--exp)"':''}>${nt(Math.abs(c.perDay))}</div></div>`;
+    if(c.gap>0)a+=`<div class="gl_line"><div class="l">缺口補滿的話，每天可花<small>收入補到目標 ${nt(c.tgt)}，扣掉已花 ${nt(c.exp)}，÷ ${c.left} 天</small></div><div class="v"${c.perDayT<0?' style="color:var(--exp)"':''}>${c.perDayT<0?'−':''}${nt(Math.abs(c.perDayT))}</div></div>`;
+    a+='<div class="gl_note">週期是每月 10 號到隔月 9 號。「每天還能花」假設收入不再增加，只用目前的結餘算。</div>';
+  }else{
+    a+='<div class="gl_note" style="margin-top:8px">這一期已經結束（或還沒開始），所以不算每天還能花多少。</div>';
+  }
+  if(c.ask)a+=`<button type="button" class="glask" id="gl_ask">找外快補 ${nt(c.gap)} 元</button><div class="gl_note">缺口超過 ${nt(Math.round(c.min))} 元才會出現這顆鈕。按下去會先在塔塔泡泡裡填好訊息，讓你確認再送出。</div>`;
+  else if(c.gap>0&&c.left>0)a+=`<div class="gl_note">缺口低於 ${nt(Math.round(c.min))} 元，先不用另外找外快。</div>`;
+  const b=`<div class="gh"><span><b>應收清單</b>進行中與已交件、還沒收到的錢</span></div><div id="gl_rcv">${rcvHtml(c)}</div>`;
+  return {title:'目標',html:a+b};
+}
+async function drawGoalExtras(my){
+  const had=!!OPPR.data&&Date.now()-OPPR.at<60000;
+  if(had)return;
+  await loadOppr(true);
+  if(my!==DETSEQ||!$('gl_rcv'))return;
+  $('gl_rcv').innerHTML=rcvHtml(goalCalc());
+}
+$('det_b').addEventListener('click',ev=>{
+  const rt=ev.target.closest('#gl_retry');if(rt){OPPR={at:0,data:null,err:null};$('gl_rcv').innerHTML='<div class="dmsg">載入中…</div>';drawGoalExtras(DETSEQ);return;}
+  const b=ev.target.closest('#gl_ask');if(!b)return;
+  if(!$('ttb').hidden&&ttAnch&&ttAnch.id==='gl_ask'){ttClose();return;}
+  const c=goalCalc(),lb='本期缺口 '+nt(c.gap)+' 元（到 '+c.end+'）';
+  const text=`面板提醒：本期（${c.start} 到 ${c.end}）月收入目標 ${nt(c.tgt)}，目前收入 ${nt(c.inc)}，還差 ${nt(c.gap)} 元；本期到 ${c.end} 結束，還剩 ${c.left} 天。幫我找外快補這 ${nt(c.gap)} 元的缺口。`;
+  ttOpen(b,{text,label:lb,ctx:{type:'goal',gap:c.gap,target:c.tgt,income:c.inc,days_left:c.left,period_end:c.end,label:lb}});
+});
 /* ---------- 備註欄多行自動長高（單筆交易、帳戶） ---------- */
 const growTA=el=>{el.style.height='auto';const mx=Math.round(innerHeight*0.4);el.style.height=Math.min(el.scrollHeight+2,mx)+'px';el.style.overflowY=el.scrollHeight>mx?'auto':'hidden';};
 const growAll=()=>{['f_note','a_note'].forEach(i=>growTA($(i)));setTimeout(()=>['f_note','a_note'].forEach(i=>growTA($(i))),80);setTimeout(()=>['f_note','a_note'].forEach(i=>growTA($(i))),420);};
